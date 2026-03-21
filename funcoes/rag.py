@@ -17,18 +17,15 @@ llm = ChatOllama(model="qwen2.5:0.5b")
 class AgentState(TypedDict):
     messages: Sequence[BaseMessage]
 
-# Header de contexto
-sys_prompt = (
-            "system",
-            "Você é um assistente virtual. Caso necessário, utilize ferramentas em suas respostas. \n"
-            "Se necessário utilizar uma ferramente, use ela antes de responder. \n"
-            "Se não souber a resposta, por favor, diga não saber e peça por mais informações ao usuário. \n"
-            # "As ferramentas dir_* servem para visualização, locomoção e interação com arquivos e diretórios. \n"
-            "Use ferramentas apenas quando necessário. \n"
-            "Forneça apenas o mínimo de informação necessário, nada mais."
-        )
+sys_prompt = """
+Você é um assistente virtual.
+Caso necessário, utilize ferramentas.
 
-ferramentas = [get_context, get_dt, dir_ls]
+Você pode usar ferramentas múltiplas vezes
+até obter todas as informações necessárias.
+"""
+
+ferramentas = [listar_diretorio, buscar_docs, abrir_doc]
 middleware = [trimming]
 
 agente = create_agent(
@@ -48,8 +45,8 @@ def e_valido(prompt: str) -> bool:
 # - Funções de chamada -
 # Aqui se encontra as funções para acessar o RAG em si
 def conv(prompt: str = "", sys_info = False) -> str:
-    resp = agente.invoke({"messages": prompt},
-                       {"configurable": {"thread_id": "1"}})
+    resp = agente.invoke({"messages": [{"role": "user", "content": prompt}]},
+                       {"configurable": {"thread_id": "1", "recursion_limit": 20}})
     if sys_info:
         print("---\n")
         for m in resp['messages']:

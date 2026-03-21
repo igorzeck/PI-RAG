@@ -11,6 +11,7 @@ O projeto é organizado da seguinte maneira:
   
 ## Setup
 **Observação**: Testes feitos em uma máquina Linux (Debian based).
+**Observação**: Ollama tem suporte limitado par modelos multimodais.
 
 Necssário utilizar as bibliotecas em requirements.txt:
 

@@ -31,30 +31,12 @@ import re
 
 # - Variáveis e Constantes -
 MAX_MESSAGES = 5
-HOME = Path('playground')
-CURDIR = Path('playground')  # Idealmente deveria estar em rag.py
+HOMEDIR = Path('playground')  # Idealmente deveria estar em rag.py
 
 embeddings = OllamaEmbeddings(model="llama3")
 vector_store = InMemoryVectorStore(embeddings)
 
 # --- Funções ---
-# - Auxiliary -
-def _iter_dir(diretorio: str = CURDIR) -> str:
-    head = f"Conteúdo do diretório '{diretorio.name if diretorio.name else '.'}':\n"
-    itens = ""
-    for item in diretorio.iterdir():
-        # TODO: Consertar ifs abaixo
-        if item.is_dir():
-            itens += "Diretório: "
-        elif item.is_file():
-            itens += 'Arquivo: '
-        
-        itens += item.name + "\n"
-    if not itens:
-        itens = 'Vazio'
-    return head + itens
-
-
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     """Mantém apenas as N últimas mensagens para manter na janela de contexto."""
@@ -73,13 +55,6 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
             *new_messages
         ]
     }
-
-# Por agora, a visualização do que está no diretório atual é por meio de um middleware
-@before_model
-def dir_ls(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
-    """Exibe o conteúdo do diretório atual."""
-    pass
-
 
 # -- Ferramentas --
 # Necessário especificar o funcionamento das ferramentas por meio do DOCSTRING
@@ -108,26 +83,80 @@ def get_dt(dataset: str = "", coluna: str = "") -> str:
     return "12, 13, 14"
 
 # - Funções dir -
-# O ideal é que o agente iterasse essas funções até conseguir o que deseja!
-# @tool
-# def dir_ls() -> str:
-#     """Lista tudo no diretório atual."""
-#     return _iter_dir()
+@tool
+def ler_arquivo(subcaminho: str) -> str:
+    """
+    Lê o conteúdo de um arquivo de texto.
+    Forneça um caminho relativo como 'README.md' ou 'src/main.py'.
+    """
+    alvo = (HOMEDIR / subcaminho).resolve()
 
-# TBA
-# @tool
-# def dir_cd(diretorio_alvo: str) -> str:
-#     """Entra no diretório especifico."""
-#     global CURDIR
+    if not str(alvo).startswith(str(HOMEDIR.resolve())):
+        return "Erro: Acesso negado fora do diretório de trabalho."
 
-#     # Limpa string
-#     diretorio_alvo = re.sub(r'[^a-zA-Z0-9]', '', diretorio_alvo)
+    if not alvo.exists():
+        return f"Erro: Arquivo '{subcaminho}' não encontrado."
 
-#     itens = f"Entrando em {diretorio_alvo}\n"
-#     novo_dir = Path(HOME / diretorio_alvo)
-#     if novo_dir.exists():
-#         itens += _iter_dir(novo_dir)
-#         CURDIR = novo_dir
-#     else:
-#         itens += "Diretório inexistente."
-#     return itens
+    if not alvo.is_file():
+        return f"Erro: '{subcaminho}' não é um arquivo."
+
+    try:
+        return alvo.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"Erro ao ler o arquivo: {e}"
+    
+# -- Teste com busca navegável --
+@tool
+def buscar_docs(query: str, k: int = 5) -> str:
+    """
+    Busca documentos relevantes para a query.
+    Retorna IDs que podem ser usados em `abrir_doc`.
+    """
+    docs = vector_store.similarity_search(query, k=k)
+
+    results = []
+    for i, doc in enumerate(docs):
+        results.append(
+            f"id:{i} | source:{doc.metadata} | preview:{doc.page_content[:200]}"
+        )
+
+    return "\n".join(results)
+
+@tool
+def abrir_doc(doc_id: int) -> str:
+    """
+    Abre um documento retornado pela ferramenta buscar_docs.
+    """
+    docs = vector_store.similarity_search("", k=10)
+
+    if doc_id >= len(docs):
+        return "Documento não encontrado."
+
+    return docs[doc_id].page_content
+
+@tool
+def listar_diretorio(subcaminho: str = ".") -> str:
+    """
+    Lista arquivos de um diretório.
+    Use '.' para o diretório atual.
+
+    Use esta ferramenta antes de `ler_arquivo`
+    para descobrir quais arquivos existem.
+    """
+    alvo = (HOMEDIR / subcaminho).resolve()
+
+    if not str(alvo).startswith(str(HOMEDIR.resolve())):
+        return "Erro: Acesso negado fora do diretório de trabalho."
+
+    if not alvo.exists():
+        return f"Erro: O caminho '{subcaminho}' não existe."
+
+    if not alvo.is_dir():
+        return f"Erro: '{subcaminho}' não é um diretório."
+
+    entradas = [
+        f"{'Diretório: ' if item.is_dir() else 'Documento: '} {item.name}"
+        for item in sorted(alvo.iterdir())
+    ]
+
+    return f"Conteúdo de '{subcaminho}':\n" + "\n".join(entradas) if entradas else "Diretório vazio."
