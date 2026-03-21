@@ -22,12 +22,14 @@ sys_prompt = (
             "system",
             "Você é um assistente virtual. Caso necessário, utilize ferramentas em suas respostas. \n"
             "Se necessário utilizar uma ferramente, use ela antes de responder. \n"
+            "Se não souber a resposta, por favor, diga não saber e peça por mais informações ao usuário. \n"
+            # "As ferramentas dir_* servem para visualização, locomoção e interação com arquivos e diretórios. \n"
             "Use ferramentas apenas quando necessário. \n"
-            "Se receber uma mensagem em branco ou não entender a pergunta, fale bom dia."
+            "Forneça apenas o mínimo de informação necessário, nada mais."
         )
 
-ferramentas = [get_context, get_dt]
-middleware = [trimming, get_dir]
+ferramentas = [get_context, get_dt, dir_ls]
+middleware = [trimming]
 
 agente = create_agent(
     llm,
@@ -37,10 +39,20 @@ agente = create_agent(
     middleware=middleware
 )
 
-# -- Funções de chamada --
+# -- Funções --
+# - Funções de auxílio -
+def e_valido(prompt: str) -> bool:
+    """Retorna se o prompt é valido para ser passado para o agente."""
+    return (prompt != "")
+
+# - Funções de chamada -
 # Aqui se encontra as funções para acessar o RAG em si
-def conv(prompt: str = "") -> str:
+def conv(prompt: str = "", sys_info = False) -> str:
     resp = agente.invoke({"messages": prompt},
-                        {"configurable": {"thread_id": "1"}})
-    print(resp)
-    return resp["messages"][-1].content
+                       {"configurable": {"thread_id": "1"}})
+    if sys_info:
+        print("---\n")
+        for m in resp['messages']:
+            m.pretty_print()
+        print("---\n")
+    return resp['messages'][-1].content
