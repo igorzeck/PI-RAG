@@ -2,6 +2,7 @@
 # Aqui também são definida as bibliotecas utilizadas
 # Necessário ollama, mas sobre no README.md
 # Pelo chatbot
+# NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
 # --- Setup ---
 # from langchain.chat_models import init_chat_model
 from langchain.agents import AgentState
@@ -11,7 +12,7 @@ from langchain_core.vectorstores import InMemoryVectorStore
 
 # Conteúdo
 # from langchain_community.document_loaders import WebBaseLoader  # Página web
-# Loader para arquivo .txt e .md
+# Loader para arquivo .pdf, .txt e .md
 from langchain_community.document_loaders import PDFMinerLoader, TextLoader, UnstructuredMarkdownLoader
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -33,7 +34,10 @@ import re
 
 # - Variáveis e Constantes -
 MAX_MESSAGES = 5
-HOMEDIR = Path('playground')  # Idealmente deveria estar em rag.py
+#__file__ é o caminho para esse arquivo,
+# o resolve pega o caminho absoluto e o parent, parent leva ao diretório base
+BASE_DIR = Path(__file__).resolve().parent.parent
+HOMEDIR = BASE_DIR / 'playground'  # Corrigido absoluto
 INDEXADOS = set()
 DATASETS = {}  # Dict
 
@@ -43,9 +47,6 @@ vector_store = InMemoryVectorStore(embeddings)
 
 
 # --- Funções ---
-# -- Auxiliares --
-
-
 # -- Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
@@ -67,12 +68,21 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     }
 
 # -- Ferramentas --
-# -- Teste com busca navegável --
+# -- Churn rate --
+@tool
+def calcular_churn_rate() -> str:
+    """
+    Calcula a taxa de Churn Rate
+    """
+    return "0.12 - Q1; 0.02 - Q2; 0.05 - Q3; 0.08 Q4"
+# -- Com busca navegável --
 @tool
 def buscar_docs(query: str, k: int = 5) -> str:
     """
     Busca documentos relevantes para a query.
     Retorna IDs que podem ser usados em `abrir_doc`.
+    Utilize essa ferramenta para arquivos de texto JÁ INDEXADOS. Em caso de dataset
+    utilize 'listar_diretorio' para encontrar o nome do dataset indexado e então utilize 'dataset_query' ou 'dataset_info'.
     """
     # TODO: Fazer retornar apenas se o vector_store tiver algo!
     docs = vector_store.similarity_search(query, k=k)
@@ -105,9 +115,10 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     """
     Lista arquivos e subdiretórios de um subcaminho.
     Use '.' para o diretório atual.
+    Senão, forneça o nome completo do subcaminho.
 
-    Use esta ferramenta antes de `ler_arquivo`
-    para descobrir quais arquivos existem.
+    Use esta ferramenta antes de `indexar_documento` ou `indexar_dataset
+    para descobrir quais arquivos e diretórios existem.
     """
     alvo = (HOMEDIR / subcaminho).resolve()
 
@@ -136,15 +147,11 @@ def listar_diretorio(subcaminho: str = ".") -> str:
 @tool
 def indexar_documento(subcaminho: str) -> str:
     """
-    Indexa um documento no vector store.
+    Indexa um documento no vector store. (PDF, TXT, Markdown)
 
-    Formatos suportados atualmente:
-    - PDF
-    - TXT
-    - Markdown (.md)
-
-    Use esta ferramenta antes de realizar busca semântica em documentos.
-    Caso o arquivo esteja no diretório raiz '.', passe apenas o nome dele.
+    Argumentos:
+    - subcaminho (str): O NOME exato do arquivo que você quer indexar (exemplo: 'p.txt', 'example.pdf').
+    NUNCA use '.' ou chute nomes de arquivos aqui. Use nomes exatos descobertos com 'listar_diretorio'.
     """
 
     alvo = (HOMEDIR / subcaminho).resolve()
@@ -214,9 +221,11 @@ def indexar_dataset(subcaminho: str) -> str:
     """
     Indexa um dataset CSV para análise.
 
-    Após indexar, o dataset pode ser consultado usando:
-    - dataset_info
-    - dataset_query
+    Argumentos:
+    - subcaminho (str): O NOME exato do arquivo CSV que você quer indexar (ex: 'dados_vendas.csv'). 
+    NUNCA passe '.' como argumento aqui. Deve ser APENAS o nome do arquivo.
+
+    Após indexar, o dataset pode ser consultado usando `dataset_info` e `dataset_query`.
     """
 
     alvo = (HOMEDIR / subcaminho).resolve()
@@ -233,7 +242,7 @@ def indexar_dataset(subcaminho: str) -> str:
     try:
         df = pd.read_csv(alvo)
 
-        DATASETS[subcaminho] = df
+        DATASETS[subcaminho.split("/")[-1]] = df
 
         return (
             f"Dataset '{subcaminho}' indexado.\n"
@@ -243,12 +252,13 @@ def indexar_dataset(subcaminho: str) -> str:
 
     except Exception as e:
         return f"Erro ao carregar dataset: {e}"
-    
+
 @tool
 def dataset_info(dataset: str) -> str:
     """
     Mostra informações sobre um dataset indexado:
     colunas, tipos e primeiras linhas.
+    dataset: str - Nome do dataset indexado.
     """
 
     if dataset not in DATASETS:
@@ -271,6 +281,9 @@ def dataset_info(dataset: str) -> str:
 def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
     """
     Executa operações simples em um dataset.
+    dataset: str - Nome do dataset indexado.
+    operacao: str - Operação a ser executada.
+    coluna: str - Coluna a ser utilizada na operação.
 
     Operações suportadas:
     - mean

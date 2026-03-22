@@ -1,3 +1,4 @@
 .*
 !.gitignore
 __pycache__
+funcoes/__pycache__
