@@ -6,6 +6,7 @@ DB_MODE = True
 import funcoes.rag as rag
 
 def main():
+    rag.configurar_rag()
     rag.chat_rag()
 
 # def main():

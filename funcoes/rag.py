@@ -3,13 +3,15 @@
 # Aparenta utilizar o tools com muita frequência, ou o último
 # tool call fica na stream!
 
-# -- Setup --
+# region: Setup --
+import os
 from funcoes.ferramentas import *  # Feito por brevidade
+from colorama import Fore
 
 # - Imports do RAG -
 from langchain.agents import create_agent
-from typing import TypedDict, Sequence
-from langchain_core.messages import BaseMessage
+# from typing import TypedDict, Sequence
+# from langchain_core.messages import BaseMessage
 
 # Memory saver para memória de curto prazo
 from langgraph.checkpoint.memory import MemorySaver
@@ -17,17 +19,20 @@ from langgraph.checkpoint.memory import MemorySaver
 # - Criação do Agente e seus componentes -
 # Houe o teste com o llama3.1:8b e com o qwen2.5:7b
 # O qwen2.5 se demonstrou o mais flexível, mesmo com um número menor de parâmetros
-llm = ChatOllama(model="qwen2.5:7b")
+# Devido ao reasoning interno do bot, o num_ctx foi aumenta por volta de 15X
+
+llm = ChatOllama(model="qwen2.5:7b", num_ctx=32768)
 # llm = ChatOllama(model="llama3.1:8b")
 
-class AgentState(TypedDict):
-    messages: Sequence[BaseMessage]
+# class AgentState(TypedDict):
+#     messages: Sequence[BaseMessage]
 
+# region: Prompt de sistema -
 # O prompt de sistema foi feito levando em conta os pontos fracos do BOT:
 # Em geral, ele necessita de alta especficações relacionadas as suas tarefas
 # Afim de dar suporte para prompts mais "livres" foi necessário adicionar
 # regras mais explícitas sobre o uso de ferramentas (evitando halucinações)
-sys_prompt = """
+sys_prompt_experimental = """
 Você é um assistente virtual autônomo.
 Responda APENAS em português.
 
@@ -37,31 +42,45 @@ REGRAS DE USO DE FERRAMENTAS (MUITO IMPORTANTE):
 3. Se uma ferramenta retornar um erro, PARE. Não tente adivinhar formatos. Leia o erro e tente uma abordagem diferente.
 4. Antes de chamar qualquer ferramenta, escreva uma breve frase explicando o que você vai fazer e por quê.
 5. Se você não tiver a ferramenta adequada ao que o usuário deseja, responda que não tem a ferramenta.
-6. Alguns banco de dados contém dicionários que explicam as suas variáveis, estes podem ser encontrados em 'manuais'.
+6. Antes de olhar um banco de dados ou dataset, verifique se contém dicionários que explicam as suas variáveis, estes podem ser encontrados em 'manuais'.
 
 Todas as perguntas do usuário serão relacionadas aos documentos que você tem acesso. Nem sempre o usuário saberá quais os documentos relevantes, cabe a você descobrir quais utilizar.
 """
 
-ferramentas = [calcular_churn_rate]
+sys_prompt_padrao = """
+Você é um assistente virtual autônomo.
+Responda APENAS em português.
+Vocẽ funciona em dois estágios: PENSAMENTO e FALA. Inicie E termine seções de pensamento com '[Pensamento]'
+
+REGRAS DE USO DE FERRAMENTAS (MUITO IMPORTANTE):
+1. NUNCA execute múltiplas ferramentas de uma só vez (paralelamente). Execute apenas UMA ferramenta de cada vez e aguarde o resultado.
+2. Se uma ferramenta retornar um erro, PARE. Não tente adivinhar formatos. Leia o erro e tente uma abordagem diferente.
+3. PENSAMENTO: Antes de chamar qualquer ferramenta, escreva uma breve frase explicando o que você vai fazer e por quê.
+4. Assuma que as perguntas podem ser respondidas utilizando as ferramentas relevantes, e que SE dados forem necessários são SEMPRE parâmetros das ferramentas.
+5. Se você não tiver a ferramenta adequada ao que o usuário deseja, responda que não tem a ferramenta.
+6. Sempre assuma não saber a resposta para a pergunta do usuário MESMO PARA COISAS BÁSICAS, e DEPENDA APENAS DO RESULTADO das ferramentas e das informações delas.
+7. Seja breve com respostas que não podem ser feitas com uso de uma ferramenta. Sempre conidere utilizar ferramentas ANTES de responder.
+8. Apenas responda o que o usuário perguntou, NADA MAIS que o que foi perguntado.
+"""
+# endregion: Prompt de sistema -
+
+ferramentas_padrao = [calcular_churn_rate]
+# As experimentais olham os arquivos no diretório de trabalho
 ferramentas_experimentais = [listar_diretorio,
                indexar_documento,
                buscar_docs,
                abrir_doc,
-               indexar_dataset,
                dataset_info,
                dataset_query]
-ferramentas += ferramentas_experimentais
+
 middleware = [trimming]
 
-agente = create_agent(
-    llm,
-    tools=ferramentas,
-    system_prompt=sys_prompt,
-    checkpointer=MemorySaver(),
-    middleware=middleware
-)
+modo_chat = ""
+agente = None
 
-# -- Funções --
+# endregion
+
+# region: Funções --
 # - Funções de conversa -
 # Aqui se encontra as funções para acessar o RAG em si
 
@@ -111,11 +130,55 @@ agente = create_agent(
 #         return final_message.content
 
 #     return ""
+def configurar_rag(auto_inicializar = False):
+    """
+    Inicializa o RAG com configurações padrões;
+    params:
+    modo_chat: "Experimental" (e) ou "Padrão" (p)
+    """
+    global agente
+    global modo_chat
+    
+    if auto_inicializar:
+        input_usuario = "1"
+    else:
+        print("Escolha o modo do RAG:\n1. Padrão - Capaz de chamar funções de calculo.\n2. Experimental - Capaz de acessar documentos.\n")
+        input_usuario = input(": ")
+
+    if input_usuario == "1":
+        agente = create_agent(
+            llm,
+            tools=ferramentas_padrao,
+            system_prompt=sys_prompt_padrao,
+            checkpointer=MemorySaver(),
+            middleware=middleware
+        )
+        modo_chat = "Padrão"
+    elif input_usuario == "2":
+        agente = create_agent(
+            llm,
+            tools=ferramentas_experimentais,
+            system_prompt=sys_prompt_experimental,
+            checkpointer=MemorySaver(),
+            middleware=middleware
+        )
+        modo_chat = "Experimental"
+    else:
+        print("Opção inválida!")
+        exit(1)
 
 
-def chat_rag():
+def chat_rag(modo_db: bool = False):
+    if not agente:
+        print("Agente não inicializado!")
+        exit(1)
+    # Limpa o terminal antes de iniciar o chat
+    os.system('cls' if os.name == 'nt' else 'clear')
 
-    print("Chat iniciado. Digite 'sair' para sair.\n")
+    print(f"Chat iniciado. Digite 'sair' para sair.\nModo: {modo_chat}", end="\n\n")
+
+    # TODO: Deixar como middleware para poder pasar pelo trimming!
+    printed_msg_ids = set()
 
     while True:
 
@@ -143,29 +206,48 @@ def chat_rag():
 
                 token, metadata = chunk
 
-                if token.content:
+                # Imprime apenas o stream do RAG, ignorando ToolMessages para não duplicar
+                if getattr(token, "type", "") == "AIMessageChunk" and token.content:
                     print(token.content, end="", flush=True)
-
 
             elif mode == "updates":  # Tools e relacionados
 
                 for node, data in chunk.items():
-
-                    if not data or "messages" not in data:
+                    # Mostra apenas mensagens
+                    if (not data) or ("messages" not in data):
                         continue
 
-                    for msg in data["messages"]:
+                    print(Fore.LIGHTBLACK_EX, end="")
+
+                    for msg in data.get("messages", []):
+                        # Pula a mensagem se ela já foi processada antes
+                        if getattr(msg, "id", None) in printed_msg_ids:
+                            continue
+                        # Adiciona mensagem para não ser printada de novo
+                        if hasattr(msg, "id") and msg.id:
+                            printed_msg_ids.add(msg.id)
+                        
                         if hasattr(msg, "tool_calls") and msg.tool_calls:
 
                             for call in msg.tool_calls:
-                                print(
-                                    f"\n\n[Chamada da Tool] {call['name']}({call['args']})\n",
-                                    flush=True
-                                )
-                        if msg.__class__.__name__ == "ToolMessage":
+                                if modo_db:
+                                    print(
+                                        f"\n[Chamada da Tool] {call['name']}({call['args']})\n",
+                                        flush=True
+                                    )
+                                else:
+                                    print(
+                                        f"\n{Fore.LIGHTGREEN_EX}Chamada da Tool{Fore.RESET}: {call['name']}({call['args']})\n",
+                                        flush=True
+                                    )
+                        if msg.__class__.__name__ == "ToolMessage" and modo_db:
                             print(
                                 f"\n[Resultado da Tool] {msg.content}\n",
                                 flush=True
                             )
 
+                    
+                    print(Fore.RESET, end="")
+
         print("\n")
+# endregion

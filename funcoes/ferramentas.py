@@ -1,10 +1,11 @@
-# Funções e ferramentas utilizadas
+# ---- Funções e ferramentas utilizadas ----
 # Aqui também são definida as bibliotecas utilizadas
 # Necessário ollama, mas sobre no README.md
-# Pelo chatbot
+# ---- Funções e ferramentas utilizadas ----
+
 # NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
-# --- Setup ---
-# from langchain.chat_models import init_chat_model
+
+# region: Setup ---
 from langchain.agents import AgentState
 
 from langchain_ollama import OllamaEmbeddings, ChatOllama
@@ -33,21 +34,21 @@ from pathlib import Path
 import re
 
 # - Variáveis e Constantes -
-MAX_MESSAGES = 5
+MAX_MESSAGES = 30  # O ideal seria manter as mensagens do usuário!
 #__file__ é o caminho para esse arquivo,
 # o resolve pega o caminho absoluto e o parent, parent leva ao diretório base
 BASE_DIR = Path(__file__).resolve().parent.parent
-HOMEDIR = BASE_DIR / 'playground'  # Corrigido absoluto
+HOMEDIR = BASE_DIR / 'playground'
 INDEXADOS = set()
 DATASETS = {}  # Dict
 
 # Necessário dar um pull nesse modelo de embedding!
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 vector_store = InMemoryVectorStore(embeddings)
+# endregion: Setup ---
 
-
-# --- Funções ---
-# -- Middleware --
+# region: Funções ---
+# region: Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     """Mantém apenas as N últimas mensagens para manter na janela de contexto."""
@@ -66,21 +67,31 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
             *new_messages
         ]
     }
+# endregion: Middleware --
 
-# -- Ferramentas --
-# -- Churn rate --
+# region: Ferramentas --
+# TODO: Função para "sair" do bot (reseta ele)
+# - Churn rate (TESTE) -
 @tool
 def calcular_churn_rate() -> str:
     """
-    Calcula a taxa de Churn Rate
+    Calcula a taxa de Churn Rate e retorna seu valor.
+
+    Essa função NÃO recebe parâmetros.
+
+    Os valores são coletados pela própria função.
     """
     return "0.12 - Q1; 0.02 - Q2; 0.05 - Q3; 0.08 Q4"
-# -- Com busca navegável --
+
+# - Com busca navegável (MODO EXPERIMENTAL) -
+# As funções abaixo utilizam busca navegável
+# e se ecnontram em fase experimental
+
 @tool
 def buscar_docs(query: str, k: int = 5) -> str:
     """
     Busca documentos relevantes para a query.
-    Retorna IDs que podem ser usados em `abrir_doc`.
+    Retorna PIDs que podem ser usados em `abrir_doc`.
     Utilize essa ferramenta para arquivos de texto JÁ INDEXADOS. Em caso de dataset
     utilize 'listar_diretorio' para encontrar o nome do dataset indexado e então utilize 'dataset_query' ou 'dataset_info'.
     """
@@ -90,7 +101,7 @@ def buscar_docs(query: str, k: int = 5) -> str:
     results = []
     for i, doc in enumerate(docs):
         results.append(
-            f"id:{i} | source:{doc.metadata} | preview:{doc.page_content[:200]}"
+            f"pid:{i} | source:{doc.metadata} | preview:{doc.page_content[:200]}"
         )
 
     if not results:
@@ -99,16 +110,16 @@ def buscar_docs(query: str, k: int = 5) -> str:
     return "\n".join(results)
 
 @tool
-def abrir_doc(doc_id: int) -> str:
+def abrir_doc(doc_pid: int) -> str:
     """
     Abre um documento retornado pela ferramenta buscar_docs.
     """
     docs = vector_store.similarity_search("", k=10)
 
-    if doc_id >= len(docs):
-        return "Documento não encontrado."
+    if doc_pid >= len(docs):
+        return "Documento não encontrado. Tem certeza que ele foi indexado com 'indexar_documentos' e listado com 'buscar_docs'?"
 
-    return docs[doc_id].page_content
+    return docs[doc_pid].page_content
 
 @tool
 def listar_diretorio(subcaminho: str = ".") -> str:
@@ -116,6 +127,11 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     Lista arquivos e subdiretórios de um subcaminho.
     Use '.' para o diretório atual.
     Senão, forneça o nome completo do subcaminho.
+    Retorna o nome dos arquivos e se eles foram ou não indexados.
+    Exemplo:
+        0. Arquivo1.csv (Indexado: Não)
+        1. Arquivo2.txt (Indexado: Não)
+        2. Arquivo3.txt (Indexado: Sim)
 
     Use esta ferramenta antes de `indexar_documento` ou `indexar_dataset
     para descobrir quais arquivos e diretórios existem.
@@ -135,25 +151,24 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     for i, item in enumerate(sorted(alvo.iterdir())):
         if item.is_dir():
             entradas.append(f"{i}. {item.name}/")
-
-        elif item.suffix.lower() == ".pdf":
-            entradas.append(f"{i}. {item.name} (use indexar_pdf)")
-
         else:
-            entradas.append(f"{i}. {item.name}")
-
+            entradas.append(f"{i}. {item.name} (Indexado: {"Sim" if str(item.resolve()) in INDEXADOS else "Não"})")
     return f"Conteúdo de '{subcaminho}':\n" + "\n".join(entradas) if entradas else "Diretório vazio."
 
 @tool
 def indexar_documento(subcaminho: str) -> str:
     """
-    Indexa um documento no vector store. (PDF, TXT, Markdown)
+    Indexa um documento no vector store.
+    OU indexa um dataset em um dicionário de datasets. 
+    
+    Formatos suportados: (PDF, TXT, Markdown, CSV)
 
     Argumentos:
     - subcaminho (str): O NOME exato do arquivo que você quer indexar (exemplo: 'p.txt', 'example.pdf').
     NUNCA use '.' ou chute nomes de arquivos aqui. Use nomes exatos descobertos com 'listar_diretorio'.
     """
 
+    # TODO: Tirar RESOLVE do Paths
     alvo = (HOMEDIR / subcaminho).resolve()
 
     if not str(alvo).startswith(str(HOMEDIR.resolve())):
@@ -169,26 +184,36 @@ def indexar_documento(subcaminho: str) -> str:
     if str(alvo) in INDEXADOS:
         return f"O arquivo '{subcaminho}' já foi indexado."
 
-    ext = alvo.suffix.lower()
+    extencao = alvo.suffix.lower()
 
     try:
 
-        if ext == ".pdf":
+        if extencao == ".pdf":
             loader = PDFMinerLoader(str(alvo))
 
-        elif ext == ".txt":
+        elif extencao == ".txt":
             loader = TextLoader(str(alvo), encoding="utf-8")
 
-        elif ext in [".md", ".markdown"]:
+        elif extencao in [".md", ".markdown"]:
             loader = UnstructuredMarkdownLoader(str(alvo))
+        
+        # - Datasets -
+        elif extencao == ".csv":
+            df = pd.read_csv(alvo)
+            INDEXADOS.add(str(alvo))
+            DATASETS[subcaminho] = df
+            return (
+                        f"Dataset '{subcaminho}' indexado.\n"
+                        f"Linhas: {len(df)}\n"
+                        f"Colunas: {list(df.columns)}"
+                    )
 
         else:
-            return f"Formato '{ext}' não suportado. Talvez seja possível com indexar_dataset?"
+            return f"Formato '{extencao}' não suportado. Talvez seja possível com indexar_dataset?"
 
         docs = loader.load()
 
         # Metadata provavelmente desnecesário se for um .pdf
-
         metadata = {
             "source": str(alvo),
             "filename": alvo.name
@@ -216,49 +241,49 @@ def indexar_documento(subcaminho: str) -> str:
 # -- Arquivos CSV --
 import pandas as pd
 
-@tool
-def indexar_dataset(subcaminho: str) -> str:
-    """
-    Indexa um dataset CSV para análise.
+# @tool
+# def indexar_dataset(subcaminho: str) -> str:
+#     """
+#     Indexa um dataset CSV para análise.
 
-    Argumentos:
-    - subcaminho (str): O NOME exato do arquivo CSV que você quer indexar (ex: 'dados_vendas.csv'). 
-    NUNCA passe '.' como argumento aqui. Deve ser APENAS o nome do arquivo.
+#     Argumentos:
+#     - subcaminho (str): O subcaminho exato do arquivo CSV que você quer indexar (ex: 'dados_vendas.csv'). 
+#     NUNCA passe '.' como argumento aqui. Deve ser APENAS o nome do arquivo.
 
-    Após indexar, o dataset pode ser consultado usando `dataset_info` e `dataset_query`.
-    """
+#     Após indexar, o dataset pode ser consultado usando `dataset_info` e `dataset_query`.
+#     """
 
-    alvo = (HOMEDIR / subcaminho).resolve()
+#     alvo = (HOMEDIR / subcaminho).resolve()
 
-    if not str(alvo).startswith(str(HOMEDIR.resolve())):
-        return "Erro: acesso negado."
+#     if not str(alvo).startswith(str(HOMEDIR.resolve())):
+#         return "Erro: acesso negado."
 
-    if not alvo.exists():
-        return f"Erro: arquivo '{subcaminho}' não encontrado."
+#     if not alvo.exists():
+#         return f"Erro: arquivo '{subcaminho}' não encontrado."
 
-    if alvo.suffix.lower() != ".csv":
-        return "Erro: apenas arquivos CSV são suportados."
+#     if alvo.suffix.lower() != ".csv":
+#         return "Erro: apenas arquivos CSV são suportados."
 
-    try:
-        df = pd.read_csv(alvo)
+#     try:
+#         df = pd.read_csv(alvo)
 
-        DATASETS[subcaminho.split("/")[-1]] = df
+#         DATASETS[subcaminho] = df
 
-        return (
-            f"Dataset '{subcaminho}' indexado.\n"
-            f"Linhas: {len(df)}\n"
-            f"Colunas: {list(df.columns)}"
-        )
+#         return (
+#             f"Dataset '{subcaminho}' indexado.\n"
+#             f"Linhas: {len(df)}\n"
+#             f"Colunas: {list(df.columns)}"
+#         )
 
-    except Exception as e:
-        return f"Erro ao carregar dataset: {e}"
+#     except Exception as e:
+#         return f"Erro ao carregar dataset: {e}"
 
 @tool
 def dataset_info(dataset: str) -> str:
     """
     Mostra informações sobre um dataset indexado:
     colunas, tipos e primeiras linhas.
-    dataset: str - Nome do dataset indexado.
+    dataset: str - subcaminho do dataset indexado.
     """
 
     if dataset not in DATASETS:
@@ -281,7 +306,7 @@ def dataset_info(dataset: str) -> str:
 def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
     """
     Executa operações simples em um dataset.
-    dataset: str - Nome do dataset indexado.
+    dataset: str - subcaminho do dataset indexado.
     operacao: str - Operação a ser executada.
     coluna: str - Coluna a ser utilizada na operação.
 
@@ -324,3 +349,5 @@ def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
 
     except Exception as e:
         return f"Erro ao executar operação: {e}"
+# endregion: Ferramentas --
+# endregion: Funcções ---
