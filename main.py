@@ -7,7 +7,7 @@ import funcoes.rag as rag
 
 def main():
     rag.configurar_rag()
-    rag.chat_rag()
+    rag.chat_rag_cli()
 
 # def main():
 #     # Loop principal

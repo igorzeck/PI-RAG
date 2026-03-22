@@ -4,11 +4,12 @@
 # ---- Funções e ferramentas utilizadas ----
 
 # NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
+# TODO: O RAG acha que diretório podem ser indexdos?
+# TODO: Consertar o trimming matar o bot
 
 # region: Setup ---
 from langchain.agents import AgentState
-
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from langchain_ollama import OllamaEmbeddings
 from langchain_core.vectorstores import InMemoryVectorStore
 
 # Conteúdo
@@ -30,8 +31,9 @@ from typing import Any
 # from langchain_core.runnables import RunnableConfig
 from langgraph.runtime import Runtime
 
+# Outros
 from pathlib import Path
-import re
+from colorama import Fore
 
 # - Variáveis e Constantes -
 MAX_MESSAGES = 30  # O ideal seria manter as mensagens do usuário!
@@ -45,9 +47,56 @@ DATASETS = {}  # Dict
 # Necessário dar um pull nesse modelo de embedding!
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
 vector_store = InMemoryVectorStore(embeddings)
+
+# Idealmente no script RAG
+modo_pensamento = False
+modo_db = False
 # endregion: Setup ---
 
 # region: Funções ---
+def print_etapa_msg(type: str = "", msg: str = "", end="\n"):
+    if type:
+        print(Fore.LIGHTGREEN_EX + type + Fore.RESET,end=": " if msg else end)
+    if msg:
+        print(Fore.LIGHTBLACK_EX + msg + Fore.RESET, end=end)
+
+def print_sys_msg(msg: str, type: str = "Info", end="\n", flush = False):
+    cor = Fore.LIGHTYELLOW_EX
+    if type == "Aviso":
+        cor = Fore.LIGHTYELLOW_EX
+    elif type == "Erro":
+        cor = Fore.LIGHTRED_EX
+    elif type == "OK":
+        cor = Fore.LIGHTGREEN_EX
+    elif type == "Info":
+        cor = Fore.LIGHTBLACK_EX
+
+    if cor:
+        print(f"{cor}{msg}{Fore.RESET}",end=end,flush=flush)
+    else:
+        print(msg,end="\n",flush=flush)
+
+
+
+# TODO: Achar jeito melhor!
+def mudar_modo(pensando: bool):
+    global modo_pensamento
+    
+    if modo_db:
+        if pensando:
+            modo_pensamento = True
+            print_etapa_msg("Modo pensamento")
+        else:
+            modo_pensamento = False
+            print_etapa_msg("Modo fala")
+    else:
+        if pensando:
+            modo_pensamento = True
+            print_etapa_msg(msg="Pensando...\n")
+        else:
+            modo_pensamento = False
+    
+    modo_pensamento = pensando
 # region: Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
@@ -57,6 +106,7 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     if len(messages) <= MAX_MESSAGES:
         return None
     
+    print_etapa_msg(f"Trimming - {len(messages)} > {MAX_MESSAGES}")
     first_msg = messages[0]
     recent_messages = messages[-MAX_MESSAGES:] if len(messages) % 2 == 0 else messages[-(MAX_MESSAGES + 1):]
     new_messages = [first_msg] + recent_messages
@@ -71,6 +121,15 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
 
 # region: Ferramentas --
 # TODO: Função para "sair" do bot (reseta ele)
+# - Base -
+@tool
+def finalizar_conversa() -> str:
+    """
+    Função para finalizar a conversa. Sempre chame essa função quando
+    O usuário começar a falar de coisas não relacionadas aos arquivos.
+    """
+    print("O RAG finalizou este chat.")
+    exit(0)
 # - Churn rate (TESTE) -
 @tool
 def calcular_churn_rate() -> str:
@@ -81,6 +140,7 @@ def calcular_churn_rate() -> str:
 
     Os valores são coletados pela própria função.
     """
+    mudar_modo(pensando=False)
     return "0.12 - Q1; 0.02 - Q2; 0.05 - Q3; 0.08 Q4"
 
 # - Com busca navegável (MODO EXPERIMENTAL) -
@@ -95,6 +155,7 @@ def buscar_docs(query: str, k: int = 5) -> str:
     Utilize essa ferramenta para arquivos de texto JÁ INDEXADOS. Em caso de dataset
     utilize 'listar_diretorio' para encontrar o nome do dataset indexado e então utilize 'dataset_query' ou 'dataset_info'.
     """
+    mudar_modo(pensando=False)
     # TODO: Fazer retornar apenas se o vector_store tiver algo!
     docs = vector_store.similarity_search(query, k=k)
 
@@ -114,6 +175,7 @@ def abrir_doc(doc_pid: int) -> str:
     """
     Abre um documento retornado pela ferramenta buscar_docs.
     """
+    mudar_modo(pensando=False)
     docs = vector_store.similarity_search("", k=10)
 
     if doc_pid >= len(docs):
@@ -136,6 +198,8 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     Use esta ferramenta antes de `indexar_documento` ou `indexar_dataset
     para descobrir quais arquivos e diretórios existem.
     """
+    mudar_modo(pensando=False)
+
     alvo = (HOMEDIR / subcaminho).resolve()
 
     if not str(alvo).startswith(str(HOMEDIR.resolve())):
@@ -167,6 +231,7 @@ def indexar_documento(subcaminho: str) -> str:
     - subcaminho (str): O NOME exato do arquivo que você quer indexar (exemplo: 'p.txt', 'example.pdf').
     NUNCA use '.' ou chute nomes de arquivos aqui. Use nomes exatos descobertos com 'listar_diretorio'.
     """
+    mudar_modo(pensando=True)
 
     # TODO: Tirar RESOLVE do Paths
     alvo = (HOMEDIR / subcaminho).resolve()
@@ -239,45 +304,6 @@ def indexar_documento(subcaminho: str) -> str:
         return f"Erro ao indexar documento: {e}"
 
 # -- Arquivos CSV --
-import pandas as pd
-
-# @tool
-# def indexar_dataset(subcaminho: str) -> str:
-#     """
-#     Indexa um dataset CSV para análise.
-
-#     Argumentos:
-#     - subcaminho (str): O subcaminho exato do arquivo CSV que você quer indexar (ex: 'dados_vendas.csv'). 
-#     NUNCA passe '.' como argumento aqui. Deve ser APENAS o nome do arquivo.
-
-#     Após indexar, o dataset pode ser consultado usando `dataset_info` e `dataset_query`.
-#     """
-
-#     alvo = (HOMEDIR / subcaminho).resolve()
-
-#     if not str(alvo).startswith(str(HOMEDIR.resolve())):
-#         return "Erro: acesso negado."
-
-#     if not alvo.exists():
-#         return f"Erro: arquivo '{subcaminho}' não encontrado."
-
-#     if alvo.suffix.lower() != ".csv":
-#         return "Erro: apenas arquivos CSV são suportados."
-
-#     try:
-#         df = pd.read_csv(alvo)
-
-#         DATASETS[subcaminho] = df
-
-#         return (
-#             f"Dataset '{subcaminho}' indexado.\n"
-#             f"Linhas: {len(df)}\n"
-#             f"Colunas: {list(df.columns)}"
-#         )
-
-#     except Exception as e:
-#         return f"Erro ao carregar dataset: {e}"
-
 @tool
 def dataset_info(dataset: str) -> str:
     """
@@ -285,6 +311,7 @@ def dataset_info(dataset: str) -> str:
     colunas, tipos e primeiras linhas.
     dataset: str - subcaminho do dataset indexado.
     """
+    mudar_modo(pensando=False)
 
     if dataset not in DATASETS:
         return "Dataset não indexado."
@@ -318,6 +345,7 @@ def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
     - unique
     - describe
     """
+    mudar_modo(pensando=False)
 
     if dataset not in DATASETS:
         return "Dataset não indexado."
