@@ -1,0 +1,16 @@
+ID da Chamada: 0205
+Data: 2026-03-16
+Operador: Atendente João (ID: 1022)
+Cliente: [CLIENTE_ANON_2] (ID do Cliente: CLI-1029)
+Tempo de Atendimento (TMA): 05m20s
+
+[Início do log]
+Atendente: Boa tarde, João falando. Com quem eu falo?
+Cliente: Oi João, aqui é o cliente do plano básico. Olha, eu comprei uma TV inteligente nova, mas não estou conseguindo conectar ela no Wi-Fi do roteador de vocês. Fica pedindo uma senha e a que está embaixo do roteador não funciona.
+Atendente: Certo, senhor. Como o senhor alterou a rede pelo nosso aplicativo no mês passado, a senha que vale é aquela que o senhor cadastrou lá. O senhor se lembra qual é?
+Cliente: Ah... Pior que eu mudei mesmo. Coloquei o nome do meu cachorro. 
+Atendente: Perfeito. Tente colocar a senha nova. Caso tenha esquecido, eu posso mandar um link de redefinição por SMS para o seu celular com final 94.
+Cliente: Espera aí, coloquei o nome do cachorro e deu certo! Já conectou. Era só isso mesmo, desculpa incomodar.
+Atendente: Imagina, senhor! É sempre um prazer ajudar. Tenha uma ótima semana e qualquer coisa é só ligar de volta.
+Cliente: Valeu, abraço!
+[Fim do log]

@@ -1,0 +1,16 @@
+ID da Chamada: 0192
+Data: 2026-03-15
+Operador: Atendente Marina (ID: 3042)
+Cliente: [CLIENTE_ANON_1] (ID do Cliente: CLI-1035)
+Tempo de Atendimento (TMA): 12m45s
+
+[Início do log]
+Atendente: Olá, bom dia! Aqui é a Marina do suporte. Como posso ajudar o senhor hoje?
+Cliente: Olha, Marina, pelo amor de Deus. A minha internet caiu três vezes só essa semana. Eu trabalho em home office e não posso ficar sem conexão.
+Atendente: Entendo perfeitamente a sua frustração, senhor. Consta aqui no sistema uma instabilidade na sua região...
+Cliente: Toda vez é essa mesma desculpa de "instabilidade na região". Eu já liguei quatro vezes esse mês. Se não resolverem isso hoje, eu vou cancelar o meu plano Plus e mudar para a [CONCORRENTE].
+Atendente: Senhor, peço desculpas pelo transtorno. Vou abrir um chamado de urgência para um técnico ir até a sua residência amanhã de manhã.
+Cliente: Amanhã de manhã? Tudo bem, mas se o técnico não chegar no horário ou se a internet cair de novo, pode considerar que eu perdi a paciência e vou cancelar.
+Atendente: Compreendo. O chamado número 509281 foi aberto. Posso ajudar em algo mais?
+Cliente: Não, é só isso. Tchau.
+[Fim do log]

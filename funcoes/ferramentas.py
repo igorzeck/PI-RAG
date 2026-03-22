@@ -2,6 +2,7 @@
 # Aqui também são definida as bibliotecas utilizadas
 # Necessário ollama, mas sobre no README.md
 # Pelo chatbot
+# NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
 # --- Setup ---
 # from langchain.chat_models import init_chat_model
 from langchain.agents import AgentState
@@ -11,7 +12,9 @@ from langchain_core.vectorstores import InMemoryVectorStore
 
 # Conteúdo
 # from langchain_community.document_loaders import WebBaseLoader  # Página web
-from langchain_community.document_loaders import PDFMinerLoader
+# Loader para arquivo .pdf, .txt e .md
+from langchain_community.document_loaders import PDFMinerLoader, TextLoader, UnstructuredMarkdownLoader
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 import pandas as pd
@@ -31,12 +34,20 @@ import re
 
 # - Variáveis e Constantes -
 MAX_MESSAGES = 5
-HOMEDIR = Path('playground')  # Idealmente deveria estar em rag.py
+#__file__ é o caminho para esse arquivo,
+# o resolve pega o caminho absoluto e o parent, parent leva ao diretório base
+BASE_DIR = Path(__file__).resolve().parent.parent
+HOMEDIR = BASE_DIR / 'playground'  # Corrigido absoluto
+INDEXADOS = set()
+DATASETS = {}  # Dict
 
-embeddings = OllamaEmbeddings(model="llama3")
+# Necessário dar um pull nesse modelo de embedding!
+embeddings = OllamaEmbeddings(model="nomic-embed-text")
 vector_store = InMemoryVectorStore(embeddings)
 
+
 # --- Funções ---
+# -- Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     """Mantém apenas as N últimas mensagens para manter na janela de contexto."""
@@ -57,61 +68,23 @@ def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
     }
 
 # -- Ferramentas --
-# Necessário especificar o funcionamento das ferramentas por meio do DOCSTRING
-# Assim, o agente consegue melhor entender as funções e seus parâmetros
-# Função de retrieval de documentos (PDF)
-@tool(response_format="content_and_artifact")
-def get_context(query: str):
-    """Retrieval de informção para a query."""
-    retrieved_docs = vector_store.similarity_search(query, k=2)
-    serialized = "\n\n".join(
-        (f"Source: {doc.metadata}\nContent: {doc.page_content}")
-        for doc in retrieved_docs
-    )
-    return serialized, retrieved_docs
-
-# Função teste de coleta de dados .csv
-@tool 
-def abrir_arquivo(arquivo: str) -> str:
-    """Abre o arquivo especificado e visualiza as primeiras 5 linhas."""
-    # TODO: Wrapper para identificar os tipos de arquivo!
-    pass
-
+# -- Churn rate --
 @tool
-def get_dt(dataset: str = "", coluna: str = "") -> str:
-    """Coleta conteúdo de um dataset"""
-    return "12, 13, 14"
-
-# - Funções dir -
-@tool
-def ler_arquivo(subcaminho: str) -> str:
+def calcular_churn_rate() -> str:
     """
-    Lê o conteúdo de um arquivo de texto.
-    Forneça um caminho relativo como 'README.md' ou 'src/main.py'.
+    Calcula a taxa de Churn Rate
     """
-    alvo = (HOMEDIR / subcaminho).resolve()
-
-    if not str(alvo).startswith(str(HOMEDIR.resolve())):
-        return "Erro: Acesso negado fora do diretório de trabalho."
-
-    if not alvo.exists():
-        return f"Erro: Arquivo '{subcaminho}' não encontrado."
-
-    if not alvo.is_file():
-        return f"Erro: '{subcaminho}' não é um arquivo."
-
-    try:
-        return alvo.read_text(encoding="utf-8")
-    except Exception as e:
-        return f"Erro ao ler o arquivo: {e}"
-    
-# -- Teste com busca navegável --
+    return "0.12 - Q1; 0.02 - Q2; 0.05 - Q3; 0.08 Q4"
+# -- Com busca navegável --
 @tool
 def buscar_docs(query: str, k: int = 5) -> str:
     """
     Busca documentos relevantes para a query.
     Retorna IDs que podem ser usados em `abrir_doc`.
+    Utilize essa ferramenta para arquivos de texto JÁ INDEXADOS. Em caso de dataset
+    utilize 'listar_diretorio' para encontrar o nome do dataset indexado e então utilize 'dataset_query' ou 'dataset_info'.
     """
+    # TODO: Fazer retornar apenas se o vector_store tiver algo!
     docs = vector_store.similarity_search(query, k=k)
 
     results = []
@@ -119,6 +92,9 @@ def buscar_docs(query: str, k: int = 5) -> str:
         results.append(
             f"id:{i} | source:{doc.metadata} | preview:{doc.page_content[:200]}"
         )
+
+    if not results:
+        results.append("Nennhum documento encontrado. Verifique se os documentos relevantes foram indexados com as funções do tipo indexar_*")
 
     return "\n".join(results)
 
@@ -137,11 +113,12 @@ def abrir_doc(doc_id: int) -> str:
 @tool
 def listar_diretorio(subcaminho: str = ".") -> str:
     """
-    Lista arquivos de um diretório.
+    Lista arquivos e subdiretórios de um subcaminho.
     Use '.' para o diretório atual.
+    Senão, forneça o nome completo do subcaminho.
 
-    Use esta ferramenta antes de `ler_arquivo`
-    para descobrir quais arquivos existem.
+    Use esta ferramenta antes de `indexar_documento` ou `indexar_dataset
+    para descobrir quais arquivos e diretórios existem.
     """
     alvo = (HOMEDIR / subcaminho).resolve()
 
@@ -154,9 +131,196 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     if not alvo.is_dir():
         return f"Erro: '{subcaminho}' não é um diretório."
 
-    entradas = [
-        f"{'Diretório: ' if item.is_dir() else 'Documento: '} {item.name}"
-        for item in sorted(alvo.iterdir())
-    ]
+    entradas = []
+    for i, item in enumerate(sorted(alvo.iterdir())):
+        if item.is_dir():
+            entradas.append(f"{i}. {item.name}/")
+
+        elif item.suffix.lower() == ".pdf":
+            entradas.append(f"{i}. {item.name} (use indexar_pdf)")
+
+        else:
+            entradas.append(f"{i}. {item.name}")
 
     return f"Conteúdo de '{subcaminho}':\n" + "\n".join(entradas) if entradas else "Diretório vazio."
+
+@tool
+def indexar_documento(subcaminho: str) -> str:
+    """
+    Indexa um documento no vector store. (PDF, TXT, Markdown)
+
+    Argumentos:
+    - subcaminho (str): O NOME exato do arquivo que você quer indexar (exemplo: 'p.txt', 'example.pdf').
+    NUNCA use '.' ou chute nomes de arquivos aqui. Use nomes exatos descobertos com 'listar_diretorio'.
+    """
+
+    alvo = (HOMEDIR / subcaminho).resolve()
+
+    if not str(alvo).startswith(str(HOMEDIR.resolve())):
+        return "Erro: acesso negado fora do diretório de trabalho."
+
+    if not alvo.exists():
+        return f"Erro: arquivo '{subcaminho}' não encontrado."
+
+    if not alvo.is_file():
+        return f"Erro: '{subcaminho}' não é um arquivo."
+
+    # evita indexar duas vezes
+    if str(alvo) in INDEXADOS:
+        return f"O arquivo '{subcaminho}' já foi indexado."
+
+    ext = alvo.suffix.lower()
+
+    try:
+
+        if ext == ".pdf":
+            loader = PDFMinerLoader(str(alvo))
+
+        elif ext == ".txt":
+            loader = TextLoader(str(alvo), encoding="utf-8")
+
+        elif ext in [".md", ".markdown"]:
+            loader = UnstructuredMarkdownLoader(str(alvo))
+
+        else:
+            return f"Formato '{ext}' não suportado. Talvez seja possível com indexar_dataset?"
+
+        docs = loader.load()
+
+        # Metadata provavelmente desnecesário se for um .pdf
+
+        metadata = {
+            "source": str(alvo),
+            "filename": alvo.name
+        }
+
+        for doc in docs:
+            doc.metadata.update(metadata)
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+
+        chunks = splitter.split_documents(docs)
+
+        vector_store.add_documents(chunks)
+
+        INDEXADOS.add(str(alvo))
+
+        return f"Documento '{subcaminho}' indexado ({len(chunks)} trechos)."
+
+    except Exception as e:
+        return f"Erro ao indexar documento: {e}"
+
+# -- Arquivos CSV --
+import pandas as pd
+
+@tool
+def indexar_dataset(subcaminho: str) -> str:
+    """
+    Indexa um dataset CSV para análise.
+
+    Argumentos:
+    - subcaminho (str): O NOME exato do arquivo CSV que você quer indexar (ex: 'dados_vendas.csv'). 
+    NUNCA passe '.' como argumento aqui. Deve ser APENAS o nome do arquivo.
+
+    Após indexar, o dataset pode ser consultado usando `dataset_info` e `dataset_query`.
+    """
+
+    alvo = (HOMEDIR / subcaminho).resolve()
+
+    if not str(alvo).startswith(str(HOMEDIR.resolve())):
+        return "Erro: acesso negado."
+
+    if not alvo.exists():
+        return f"Erro: arquivo '{subcaminho}' não encontrado."
+
+    if alvo.suffix.lower() != ".csv":
+        return "Erro: apenas arquivos CSV são suportados."
+
+    try:
+        df = pd.read_csv(alvo)
+
+        DATASETS[subcaminho.split("/")[-1]] = df
+
+        return (
+            f"Dataset '{subcaminho}' indexado.\n"
+            f"Linhas: {len(df)}\n"
+            f"Colunas: {list(df.columns)}"
+        )
+
+    except Exception as e:
+        return f"Erro ao carregar dataset: {e}"
+
+@tool
+def dataset_info(dataset: str) -> str:
+    """
+    Mostra informações sobre um dataset indexado:
+    colunas, tipos e primeiras linhas.
+    dataset: str - Nome do dataset indexado.
+    """
+
+    if dataset not in DATASETS:
+        return "Dataset não indexado."
+
+    df = DATASETS[dataset]
+
+    preview = df.head(5).to_string()
+
+    return (
+        f"Dataset: {dataset}\n"
+        f"Linhas: {len(df)}\n"
+        f"Colunas: {list(df.columns)}\n\n"
+        f"Tipos:\n{df.dtypes}\n\n"
+        f"Amostra:\n{preview}"
+    )
+
+
+@tool
+def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
+    """
+    Executa operações simples em um dataset.
+    dataset: str - Nome do dataset indexado.
+    operacao: str - Operação a ser executada.
+    coluna: str - Coluna a ser utilizada na operação.
+
+    Operações suportadas:
+    - mean
+    - sum
+    - max
+    - min
+    - unique
+    - describe
+    """
+
+    if dataset not in DATASETS:
+        return "Dataset não indexado."
+
+    df = DATASETS[dataset]
+
+    try:
+
+        if operacao == "mean":
+            return str(df[coluna].mean())
+
+        elif operacao == "sum":
+            return str(df[coluna].sum())
+
+        elif operacao == "max":
+            return str(df[coluna].max())
+
+        elif operacao == "min":
+            return str(df[coluna].min())
+
+        elif operacao == "unique":
+            return str(df[coluna].unique())
+
+        elif operacao == "describe":
+            return str(df.describe())
+
+        else:
+            return "Operação não suportada."
+
+    except Exception as e:
+        return f"Erro ao executar operação: {e}"

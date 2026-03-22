@@ -38,6 +38,7 @@ orjson==3.11.7
 ormsgpack==1.12.2
 packaging==26.0
 pandas==3.0.1
+pdfminer.six==20260107
 propcache==0.4.1
 pycparser==3.0
 pydantic==2.12.5

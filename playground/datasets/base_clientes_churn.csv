@@ -1,0 +1,11 @@
+ID_Cliente,Plano,Meses_Ativo,Chamados_Suporte,Mensalidade,Status,Motivo_Cancelamento
+CLI-1029,Básico,12,1,49.90,Ativo,
+CLI-1030,Plus,24,3,89.90,Ativo,
+CLI-1031,Premium,6,5,129.90,Cancelado,Concorrente
+CLI-1032,Plus,2,1,89.90,Ativo,
+CLI-1033,Básico,48,0,49.90,Ativo,
+CLI-1034,Premium,18,2,129.90,Ativo,
+CLI-1035,Plus,10,4,89.90,Cancelado,Qualidade do Serviço
+CLI-1036,Básico,3,1,49.90,Ativo,
+CLI-1037,Premium,36,0,129.90,Ativo,
+CLI-1038,Plus,1,2,89.90,Cancelado,Preço

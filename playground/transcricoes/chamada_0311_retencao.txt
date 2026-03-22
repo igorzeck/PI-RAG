@@ -1,0 +1,17 @@
+ID da Chamada: 0311
+Data: 2026-03-18
+Operador: Analista de Retenção Carlos (ID: 5900)
+Cliente: [CLIENTE_ANON_3] (ID do Cliente: CLI-1032)
+Tempo de Atendimento (TMA): 18m10s
+
+[Início do log]
+Atendente: Setor de retenção, boa tarde. Falo com o titular da conta?
+Cliente: Sim, sou eu. Eu liguei mais cedo e a menina transferiu pra você. Quero cancelar minha assinatura.
+Atendente: Certo. Verifico que o senhor possui o Plano Plus. Gostaria de saber o motivo do cancelamento para podermos melhorar nosso atendimento?
+Cliente: O serviço até que é bom, mas o preço está puxado. A empresa concorrente tá me oferecendo a mesma velocidade por R$ 60, e o plano de vocês é quase R$ 90. Tá muito caro pra mim no momento.
+Atendente: Compreendo perfeitamente, senhor. Nós valorizamos muito a sua fidelidade nesses dois meses conosco. O senhor sabia que trocar de operadora pode dar bastante dor de cabeça com instalação e multas? Para que o senhor não precise passar por esse transtorno, o sistema liberou aqui um desconto! Eu consigo reduzir o seu Plano Plus para R$ 59,90 por mês durante os próximos 6 meses. O que acha?
+Cliente: Hmm... R$ 59,90? Fica mais barato que a concorrência então. E não muda a velocidade?
+Atendente: Exato! Continua com a mesma internet ultrarrápida, sem limite de franquia, pagando menos. Só precisa permanecer com a gente pelos próximos 6 meses.
+Cliente: Ah, então tudo bem. Pode aplicar esse desconto aí. Prefiro ficar não ter que receber técnico de outra empresa em casa.
+Atendente: Excelente escolha! Já apliquei o desconto. A sua próxima fatura em abril virá com o novo valor de R$ 59,90.
+[Fim do log]
