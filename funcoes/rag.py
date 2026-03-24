@@ -23,11 +23,19 @@ from langgraph.checkpoint.memory import MemorySaver
 # O qwen2.5 se demonstrou o mais flexível, mesmo com um número menor de parâmetros
 # Devido ao reasoning interno do bot, o num_ctx foi aumenta por volta de 15X
 
+modelos = [
+        "qwen2.5:0.5b",
+        "qwen2.5:3b",
+        "qwen2.5:7b",
+        "qwen3.1:8b",
+        "qwen3.2:3b",
+    ]
+
+# índice na lista de modelos
+modelo_padrao = -1
+
 llm = ChatOllama(model="qwen2.5:7b", num_ctx=32768)
 # llm = ChatOllama(model="llama3.1:8b")
-
-# class AgentState(TypedDict):
-#     messages: Sequence[BaseMessage]
 
 # region: Prompt de sistema -
 # O prompt de sistema foi feito levando em conta os pontos fracos do BOT:
@@ -46,9 +54,9 @@ REGRAS DE USO DE FERRAMENTAS (MUITO IMPORTANTE):
 5. Se você não tiver a ferramenta adequada ao que o usuário deseja, responda que não tem a ferramenta.
 6. Antes de olhar um banco de dados ou dataset, verifique se contém dicionários que explicam as suas variáveis.
 7. Todas as perguntas do usuário serão relacionadas aos documentos que você tem acesso. Nem sempre o usuário saberá quais os documentos relevantes, cabe a você descobrir quais utilizar.
-
-Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, e se ele continuar, então, finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
 """
+# Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, e se ele continuar, então, finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
+# """
 
 sys_prompt_padrao = """
 Você é um assistente virtual autônomo.
@@ -63,9 +71,9 @@ REGRAS DE USO DE FERRAMENTAS (MUITO IMPORTANTE):
 6. Sempre assuma não saber a resposta para a pergunta do usuário MESMO PARA COISAS BÁSICAS, e DEPENDA APENAS DO RESULTADO das ferramentas e das informações delas.
 7. Seja breve com respostas que não podem ser feitas com uso de uma ferramenta. Sempre conidere utilizar ferramentas ANTES de responder.
 8. Apenas responda o que o usuário perguntou, NADA MAIS que o que foi perguntado.
-
-Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, então finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
 """
+# Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, então finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
+# """
 # endregion: Prompt de sistema -
 
 ferramentas_base = [finalizar_conversa]
@@ -87,12 +95,58 @@ agente = None
 # endregion
 
 # region: Funções --
+# - Auxiliares -
+# TODO: Talvez enter para opção padrão?
+def conj_menu_cli(ops: list[str], escolha: int = -1, sair_como_ultima = False, clear_cli = True) -> int:
+    """
+    Menu com lista de opções que retorna a escolhida
+    params:
+        escolha - Se um número menor que 0, conjura menu de opções.
+        sair_como_ultima - Se True, adiciona uma opção para saída.
+        clear - Se True, limpa o terminal.
+    return:
+        Retorna id da opção escolhida (assim como na lista).
+    """
+    if escolha > 0:
+        return escolha
+    
+    # Não recomendado deixar como True (apaga todo histório do terimal...)
+    if clear_cli:
+        os.system('cls' if os.name == 'nt' else 'clear')
+
+    saidas = ["sair", "s", "quit", "q", "exit"]
+
+    if sair_como_ultima:
+        saidas.append(len(ops))
+
+    while True:
+        print("Escolha uma das opções. Ou escreva 's' para sair.")
+        
+        for i, op in enumerate(ops):
+            print(f"{i}. {op}")
+        
+        input_usuario = input("\n: ")
+        if input_usuario.lower() in saidas:
+            print_sys_msg("Saindo...")
+            return -1
+        
+        if not input_usuario.isnumeric():
+            print_sys_msg("Opção inválida! Necessário número!", "Erro")
+            continue
+        
+        if int(input_usuario) > len(ops):
+            print_sys_msg("Escolha uma das opções!", "Erro")
+            continue
+        
+        return int(input_usuario)
+
+
 # - Configurações -
 def configurar_rag(with_debug_output = False, auto_inicializar = False):
     """
     Inicializa o RAG com configurações padrões;
     params:
-    modo_chat: "Experimental" (e) ou "Padrão" (p)
+        modo_chat: "Experimental" ou "Padrão"
     """
     global agente
     global modo_chat
@@ -100,47 +154,49 @@ def configurar_rag(with_debug_output = False, auto_inicializar = False):
 
     modo_db = with_debug_output
 
-    # Limpa o terminal antes de iniciar o chat
-    os.system('cls' if os.name == 'nt' else 'clear')
+    # Menu 1 - Modelo do Agente
+    op_= conj_menu_cli(ops=[f"Modelo {Fore.LIGHTCYAN_EX}{modelo.capitalize()}{Fore.RESET}." for modelo in modelos],
+                       escolha=modelo_padrao)
+
+    if op_ < 0:
+        print_sys_msg("Encerrando...")
+        exit(0)
     
+    modelo = modelos[op_]
+
+    llm = ChatOllama(model=modelo, num_ctx=32768)
+
+    # Menu 2 - Modo do Agente
     input_usuario = "1"
+    op_ = conj_menu_cli(ops=[
+        f"{Fore.LIGHTCYAN_EX}Padrão{Fore.RESET} - Capaz de chamar funções de calculo.",
+        f"{Fore.LIGHTCYAN_EX}Experimental{Fore.RESET} - Capaz de acessar documentos.",
+    ], escolha=1 if auto_inicializar else -1)
 
-    while True:
-        if auto_inicializar:
-            input_usuario = "1"
-        else:
-            print("Escolha o modo do RAG:")
-            print(f"1. {Fore.LIGHTCYAN_EX}Padrão{Fore.RESET} - Capaz de chamar funções de calculo.")
-            print(f"2. {Fore.LIGHTCYAN_EX}Experimental{Fore.RESET} - Capaz de acessar documentos.")
-            print(f"3. {Fore.LIGHTCYAN_EX}Sair{Fore.RESET}.\n")
-            input_usuario = input(": ")
-
-
-        if input_usuario == "1":
-            agente = create_agent(
-                llm,
-                tools=ferramentas_base + ferramentas_padrao,
-                system_prompt=sys_prompt_padrao,
-                checkpointer=MemorySaver(),
-                middleware=middleware
-            )
-            modo_chat = "Padrão"
-            return
-        elif input_usuario == "2":
-            agente = create_agent(
-                llm,
-                tools=ferramentas_base + ferramentas_experimentais,
-                system_prompt=sys_prompt_experimental,
-                checkpointer=MemorySaver(),
-                middleware=middleware
-            )
-            modo_chat = "Experimental"
-            return
-        elif input_usuario == "3":
-            print("Saindo...")
-            exit(0)
-        else:
-            print_sys_msg(f"Opção inválida!", "Erro")
+    if op_ < 0:
+        print_sys_msg("Encerrando...")
+        exit(0)
+    
+    if op_ == 0:
+        agente = create_agent(
+            llm,
+            tools=ferramentas_base + ferramentas_padrao,
+            system_prompt=sys_prompt_padrao,
+            checkpointer=MemorySaver(),
+            middleware=middleware
+        )
+        modo_chat = "Padrão"
+        return
+    elif op_ == 1:
+        agente = create_agent(
+            llm,
+            tools=ferramentas_base + ferramentas_experimentais,
+            system_prompt=sys_prompt_experimental,
+            checkpointer=MemorySaver(),
+            middleware=middleware
+        )
+        modo_chat = "Experimental"
+        return
 
 # - Funções de conversa -
 def chat_rag_cli():
