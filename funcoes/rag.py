@@ -103,7 +103,7 @@ def conj_menu_cli(ops: list[str], escolha: int = -1, sair_como_ultima = False, c
     return:
         Retorna id da opção escolhida (assim como na lista).
     """
-    if escolha > 0:
+    if escolha >= 0:
         return escolha
     
     # Não recomendado deixar como True (apaga todo histório do terimal...)
@@ -138,11 +138,12 @@ def conj_menu_cli(ops: list[str], escolha: int = -1, sair_como_ultima = False, c
 
 
 # - Configurações -
-def configurar_rag(with_debug_output = False, auto_inicializar = False):
+def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = False):
     """
     Inicializa o RAG com configurações padrões;
     params:
-        modo_chat: "Experimental" ou "Padrão"
+        modelo: int - Modelo (índice lista modelos)
+        modo: int - Modo Padrão (0) e Experimental (1)
     """
     global agente
     global modo_chat
@@ -152,7 +153,7 @@ def configurar_rag(with_debug_output = False, auto_inicializar = False):
 
     # Menu 1 - Modelo do Agente
     op_= conj_menu_cli(ops=[f"Modelo {Fore.LIGHTCYAN_EX}{modelo.capitalize()}{Fore.RESET}." for modelo in modelos],
-                       escolha=modelo_padrao)
+                       escolha=modelo_op)
 
     if op_ < 0:
         print_sys_msg("Encerrando...")
@@ -163,11 +164,10 @@ def configurar_rag(with_debug_output = False, auto_inicializar = False):
     llm = ChatOllama(model=modelo, num_ctx=32768)
 
     # Menu 2 - Modo do Agente
-    input_usuario = "1"
     op_ = conj_menu_cli(ops=[
         f"{Fore.LIGHTCYAN_EX}Padrão{Fore.RESET} - Capaz de chamar funções de calculo.",
         f"{Fore.LIGHTCYAN_EX}Experimental{Fore.RESET} - Capaz de acessar documentos.",
-    ], escolha=1 if auto_inicializar else -1)
+    ], escolha=modo)
 
     if op_ < 0:
         print_sys_msg("Encerrando...")
