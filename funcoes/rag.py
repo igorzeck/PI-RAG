@@ -27,15 +27,11 @@ modelos = [
         "qwen2.5:0.5b",
         "qwen2.5:3b",
         "qwen2.5:7b",
-        "qwen3.1:8b",
-        "qwen3.2:3b",
+        "llama3.2:3b",
     ]
 
 # índice na lista de modelos
 modelo_padrao = -1
-
-llm = ChatOllama(model="qwen2.5:7b", num_ctx=32768)
-# llm = ChatOllama(model="llama3.1:8b")
 
 # region: Prompt de sistema -
 # O prompt de sistema foi feito levando em conta os pontos fracos do BOT:

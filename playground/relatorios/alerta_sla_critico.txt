@@ -1,0 +1,34 @@
+========================================
+ALERTA AUTOMÁTICO DE SLA — SISTEMA DE MONITORAMENTO
+========================================
+Data de Emissão: 2026-03-22 14:30:00
+Tipo: CRÍTICO
+========================================
+
+OPERADOR EM VIOLAÇÃO DE SLA:
+  Nome: Beatriz Costa
+  ID: OP-1190
+  Nível: N1
+
+MÉTRICAS ATUAIS (Março/2026):
+  TMA Médio: 13,9 minutos (Meta: ≤ 10 min para N1)
+  Resolução 1ª Chamada: 55,0% (Meta: ≥ 75%)
+  Nota Média do Cliente: 5,3 (Meta: ≥ 7,0)
+  Faltas no Mês: 2
+  Chamadas Atendidas: 134 (Média da equipe N1: 178)
+
+HISTÓRICO DE ALERTAS:
+  - 2026-02-28: Alerta AMARELO (TMA de 12,1 min)
+  - 2026-03-15: Alerta LARANJA (Resolução caiu para 58%)
+  - 2026-03-22: Alerta CRÍTICO (atual)
+
+AÇÃO REQUERIDA:
+  Supervisão imediata deve:
+  1. Realizar escuta silenciosa nas próximas 5 ligações do operador.
+  2. Agendar sessão de coaching individual até 25/03.
+  3. Caso não haja melhora em 7 dias, iniciar processo formal de advertência (RH-POL-042).
+
+ESTE ALERTA FOI ENVIADO AUTOMATICAMENTE PARA:
+  - Supervisor direto: Marcos Oliveira (OP-7745)
+  - Gerente de operações: [email protegido]
+========================================

@@ -1,0 +1,25 @@
+ID da Chamada: 0418
+Data: 2026-03-19
+Operador: Atendente Beatriz (ID: 1190)
+Cliente: [CLIENTE_ANON_4] (ID do Cliente: CLI-1035)
+Tempo de Atendimento (TMA): 23m15s
+
+[Início do log]
+Atendente: Suporte, boa tarde. Com quem eu falo?
+Cliente: Sou eu de novo. Já é a quinta vez que ligo esse mês. Minha internet simplesmente para de funcionar todo dia por volta das 19h e só volta lá pelas 23h. Isso já aconteceu ontem, anteontem, terça...
+Atendente: Entendo, senhor. Deixa eu verificar aqui no sistema... Realmente, vejo que o senhor já abriu 4 chamados sobre o mesmo problema este mês.
+Cliente: Pois é. E ninguém resolve nada! Na última vez me disseram que iam mandar um técnico e ninguém apareceu. Eu trabalho à noite e preciso da internet. Se não resolver agora, eu vou cancelar e ainda vou reclamar no Procon.
+Atendente: Senhor, eu entendo a gravidade. Vou tentar verificar se consigo resolver daqui...
+[Nota do sistema: O TMA já ultrapassou 15 minutos neste ponto da conversa.]
+Cliente: Você não vai me transferir pra alguém que possa realmente resolver isso? Eu não quero ficar ouvindo "vou verificar" de novo.
+Atendente: Não, senhor, eu mesma posso resolver. Vou abrir mais um chamado técnico, número 510847. Dessa vez vai ser prioridade.
+Cliente: Prioridade? Isso disseram da última vez também. Tanto faz, se amanhã não funcionar eu cancelo.
+Atendente: Entendo. Mais alguma coisa?
+Cliente: Não. Tchau.
+[Fim do log]
+
+[NOTA DE AUDITORIA]: Esta chamada apresenta múltiplas violações de protocolo:
+1. Cliente com 4+ chamados no mês sobre o mesmo problema — deveria ter sido escalado para N2.
+2. TMA excedeu 15 minutos sem resolução — critério adicional de escalação obrigatória.
+3. Cliente mencionou cancelamento — gatilho de transferência imediata para retenção.
+4. Atendente não realizou transferência em nenhum momento da ligação.

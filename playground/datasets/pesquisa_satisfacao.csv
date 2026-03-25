@@ -1,0 +1,12 @@
+ID_Cliente,Data_Pesquisa,Nota_NPS,Categoria_Atendimento,Comentario
+CLI-1029,2026-03-16,9,Suporte,"Atendente resolveu rápido, muito educado."
+CLI-1031,2026-03-10,2,Retenção,"Cancelei porque ninguém resolve meu problema de velocidade. Péssimo."
+CLI-1032,2026-03-19,7,Retenção,"Consegui um desconto bom, mas demorou pra ser atendido."
+CLI-1033,2026-03-12,10,Suporte,"Nunca tive problema, sempre funciona bem."
+CLI-1035,2026-03-17,3,Reclamação,"Internet caindo toda hora. Já liguei 4 vezes e nada."
+CLI-1034,2026-03-20,4,Reclamação,"Pago premium e a velocidade não chega nem perto do contratado."
+CLI-1036,2026-03-14,8,Suporte,"Bom atendimento, mas a fila de espera foi longa."
+CLI-1037,2026-03-11,10,Geral,"Excelente serviço, recomendo."
+CLI-1038,2026-03-09,1,Cancelamento,"Preço absurdo. Mudei pra concorrência e pago metade."
+CLI-1040,2026-03-21,6,Suporte,"Resolveram, mas tiveram que mandar técnico. Demorou 3 dias."
+CLI-1041,2026-03-22,5,Reclamação,"Cobranças indevidas na fatura. Tive que ligar 2 vezes pra corrigir."

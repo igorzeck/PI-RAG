@@ -1,0 +1,17 @@
+ID da Chamada: 0527
+Data: 2026-03-21
+Operador: Analista de Retenção Pedro (ID: 4401)
+Cliente: [CLIENTE_ANON_5] (ID do Cliente: CLI-1034)
+Tempo de Atendimento (TMA): 14m50s
+
+[Início do log]
+Atendente: Setor de retenção, boa tarde. Meu nome é Pedro, estou vendo aqui que o senhor foi transferido do suporte. Como posso ajudar?
+Cliente: Pedro, boa tarde. Olha, eu sou cliente Premium de vocês há 18 meses. Pago R$ 129,90 por mês pra ter 500 Mega, mas faz três semanas que eu mal consigo assistir uma série sem buffering. Mandaram um técnico semana passada e ele disse que "estava tudo certo" na minha casa, que o problema era da rede. Se o problema é da rede e vocês não conseguem resolver, por que eu estou pagando esse valor?
+Atendente: Senhor, entendo completamente. O senhor tem toda razão em estar insatisfeito. Verifiquei no sistema que realmente houve uma degradação de sinal na sua região nas últimas semanas por conta de uma obra de terceiros que danificou parte da nossa fibra. A previsão de reparo completo é até o dia 28 deste mês.
+Cliente: Dia 28? Faltam ainda 7 dias. E enquanto isso eu fico pagando R$ 130 por um serviço que não entrega nem metade?
+Atendente: O senhor tem razão. Considerando que o senhor é cliente Premium há mais de 12 meses e nunca abriu reclamação antes, tenho aqui uma proposta diferenciada. Consigo aplicar a Oferta Diamante: sua mensalidade passa de R$ 129,90 para R$ 99,90 de forma permanente. Além disso, vou lançar um crédito de R$ 65,00 na sua próxima fatura referente aos dias de instabilidade.
+Cliente: Permanente? Não é por 3 meses e depois volta ao preço antigo?
+Atendente: Não, senhor. Permanente mesmo. É um reconhecimento pela sua fidelidade. O único ponto é que renova o período de permanência por mais 12 meses.
+Cliente: Hmm, R$ 99,90 permanente mais o crédito... Tudo bem, aceito. Mas se a internet não melhorar até dia 28, eu vou ligar de novo e aí não vai ter conversa.
+Atendente: Combinado. Já registrei a Oferta Diamante e o crédito na sua conta. Obrigado pela compreensão.
+[Fim do log]
