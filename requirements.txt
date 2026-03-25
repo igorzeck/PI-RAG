@@ -20,6 +20,7 @@ cryptography==46.0.5
 cymem==2.0.13
 dataclasses-json==0.6.7
 emoji==2.15.0
+en_core_web_sm==3.8.0
 filelock==3.25.2
 filetype==1.2.0
 frozenlist==1.8.0
