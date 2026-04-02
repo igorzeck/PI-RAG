@@ -1,9 +1,10 @@
 # TODO: Dar ao agente vista do diretório raiz nãoé má ideia!
 # TODO: Função que quando chamada retorna texto grado até então!
+# TODO: (Modelo qwen3.5:2b?) Consertar fato que ele para no meio dos prompts depois de tools calls
 # --- RAG ---
 # Aparenta utilizar o tools com muita frequência, ou o último
 # tool call fica na stream!
-
+# NOTE: Possível parar um modeo específico com: ollama.stop('llama3') 
 
 # region: Setup --
 import os
@@ -24,14 +25,24 @@ from langgraph.checkpoint.memory import MemorySaver
 # Devido ao reasoning interno do bot, o num_ctx foi aumenta por volta de 15X
 
 modelos = [
-        "qwen2.5:0.5b",
         "qwen2.5:3b",
         "qwen2.5:7b",
+        "qwen3:4b",
+        "qwen3.5:2b",
+        "qwen3.5:4b",
         "llama3.2:3b",
     ]
 
-# índice na lista de modelos
-modelo_padrao = -1
+# Pelo visto é necessário saber com antecedência!
+suporte_thinking = [
+    False,
+    False,
+    True,
+    True,
+    False,
+]
+
+thinker = False
 
 # region: Prompt de sistema -
 # O prompt de sistema foi feito levando em conta os pontos fracos do BOT:
@@ -48,10 +59,10 @@ REGRAS DE USO DE FERRAMENTAS (MUITO IMPORTANTE):
 3. Se uma ferramenta retornar um erro, PARE. Não tente adivinhar formatos. Leia o erro e tente uma abordagem diferente.
 4. Antes de chamar qualquer ferramenta, escreva uma breve frase explicando o que você vai fazer e por quê.
 5. Se você não tiver a ferramenta adequada ao que o usuário deseja, responda que não tem a ferramenta.
-6. Antes de olhar um banco de dados ou dataset, verifique se contém dicionários que explicam as suas variáveis.
+6. Antes de indexar um arquivo, verifique se não há outros arquivos mais adequados para indexar.
 7. Todas as perguntas do usuário serão relacionadas aos documentos que você tem acesso. Nem sempre o usuário saberá quais os documentos relevantes, cabe a você descobrir quais utilizar.
 """
-# Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, e se ele continuar, então, finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
+# 8. Caso o usuário fale de algo claramente não relacionado aos documentos ou ao trabalho, peça pra ele explicar a relevância do assunto, e se ele continuar, então, finalize IMEDIATAMENTE a conversa utilizando a ferramenta 'finalizar_conversa'
 # """
 
 sys_prompt_padrao = """
@@ -148,6 +159,7 @@ def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = Fals
     global agente
     global modo_chat
     global modo_db
+    global thinker
 
     modo_db = with_debug_output
 
@@ -160,8 +172,11 @@ def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = Fals
         exit(0)
     
     modelo = modelos[op_]
+    thinker = suporte_thinking[op_]
 
-    llm = ChatOllama(model=modelo, num_ctx=32768)
+    llm = ChatOllama(model=modelo,
+                     num_ctx=32768,
+                     reasoning=thinker)  # Nem todos modelos tem suporte!
 
     # Menu 2 - Modo do Agente
     op_ = conj_menu_cli(ops=[
@@ -204,15 +219,17 @@ def chat_rag_cli():
     
     print(f"Chat iniciado. Digite 'sair' para sair.\nModo: {modo_chat}", end="\n\n")
 
-    # TODO: Deixar como middleware para poder pasar pelo trimming!
+    # NOTE: Não precisa passar pelo trimming, já que cada um único
+    # TODO: Passar pelo trimming ao invés de deixar aqui?
     printed_msg_ids = set()
+    em_reasoning = False
 
     while True:
         prompt = input(f"{Fore.BLUE}Usuário{Fore.RESET}: ")
 
         # Saída
         if prompt.lower() in ['sair', 's']:
-            print("Encerrando.")
+            print_sys_msg("Encerrando...")
             break
 
         print(f"\n{Fore.LIGHTBLUE_EX}RAG{Fore.RESET}:", end=" ", flush=True)
@@ -229,13 +246,22 @@ def chat_rag_cli():
         )
 
         for mode, chunk in stream:
-            if mode == "messages" and not modo_pensamento:
-
+            # TODO: Deixar esse if mais limpo
+            if mode == "messages" and (not modo_processamento or modo_db):
                 token, metadata = chunk
-
+                additional_kwargs = getattr(token, "additional_kwargs", "")
                 # Imprime apenas o stream do RAG, ignorando ToolMessages para não duplicar
                 if getattr(token, "type", "") == "AIMessageChunk" and token.content:
                     print(token.content, end="", flush=True)
+                    if em_reasoning:
+                        em_reasoning = False
+                elif "reasoning_content" in additional_kwargs:
+                    # Se o modelo não suportar thiking isso vai ser redundante
+                    if modo_db:
+                        print_sys_msg(additional_kwargs["reasoning_content"], end="", flush=True)
+                    elif not em_reasoning:
+                        em_reasoning = True
+                        print_sys_msg("Pensando...", end="\n", flush=True)
 
             elif mode == "updates":  # Tools e relacionados
 

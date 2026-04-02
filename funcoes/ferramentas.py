@@ -49,7 +49,7 @@ embeddings = OllamaEmbeddings(model="nomic-embed-text")
 vector_store = InMemoryVectorStore(embeddings)
 
 # Idealmente no script RAG
-modo_pensamento = False
+modo_processamento = False # Para indexção basicamente, TODO: renomear
 modo_db = False
 # endregion: Setup ---
 
@@ -77,26 +77,28 @@ def print_sys_msg(msg: str, type: str = "Info", end="\n", flush = False):
         print(msg,end="\n",flush=flush)
 
 
-
-# TODO: Achar jeito melhor!
 def mudar_modo(pensando: bool):
-    global modo_pensamento
+    """
+    Muda para o modo processamento.
+    Na prática só omite os resultados.
+    """
+    global modo_processamento
     
     if modo_db:
         if pensando:
-            modo_pensamento = True
-            print_etapa_msg("Modo pensamento")
+            modo_processamento = True
+            print_etapa_msg("Modo processamento")
         else:
-            modo_pensamento = False
+            modo_processamento = False
             print_etapa_msg("Modo fala")
     else:
         if pensando:
-            modo_pensamento = True
-            print_etapa_msg(msg="Pensando...\n")
+            modo_processamento = True
+            print_etapa_msg(msg="Processando...\n")
         else:
-            modo_pensamento = False
+            modo_processamento = False
     
-    modo_pensamento = pensando
+    modo_processamento = pensando
 # region: Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
