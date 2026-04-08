@@ -31,7 +31,7 @@ def abrir_ollama():
                                     stdout=subprocess.DEVNULL, 
                                     stderr=subprocess.DEVNULL)
             print("Inicializando o Ollama...")
-            time.sleep(5)  # Give the server a moment to warm up
+            time.sleep(5)
         except Exception as e:
             print(f"Ollama não incializou: {e}")
 
@@ -40,16 +40,42 @@ def fechar_ollama():
     # Fechar apenas se o subprocesso
     # for aberto aqui por esse script
     if ps:
-        ps.terminate()  # Sends SIGTERM
-        ps.wait()       # Ensure it has fully exited
+        ps.terminate()
+        ps.wait()
 
 def main():
     # Abre o Ollama
     abrir_ollama()
 
     # Configura o RAG
-    rag.configurar_rag()
-    rag.chat_rag_cli()
+    # TODO: Interface visual para configurar o RAG!
+    rag.configurar_rag(0, 0)
+    # Exemplo de uso da função chat_rag
+    for tk in rag.chat_rag("Oi"):
+         print(tk, flush=True, end="")
+    # Ou:
+    gerador = rag.chat_rag("Oi")
+    # Avança uma iteração por vez (1 token gerado)
+    # Note o valor default "FIM!!!!!" do next pra quando o gerador parar
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    print(next(gerador, "FIM!!!!!"), end="")
+    # Mas fazendo assim é complicado saber se o bot terminou ou não!
     
     # Fecha o Ollama
     fechar_ollama()

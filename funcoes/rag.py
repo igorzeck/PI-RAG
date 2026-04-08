@@ -23,7 +23,7 @@ from langgraph.checkpoint.memory import MemorySaver
 # Houe o teste com o llama3.1:8b e com o qwen2.5:7b
 # O qwen2.5 se demonstrou o mais flexível, mesmo com um número menor de parâmetros
 # Devido ao reasoning interno do bot, o num_ctx foi aumenta por volta de 15X
-
+# region: Configurações do RAG
 modelos = [
         "qwen2.5:3b",
         "qwen2.5:7b",
@@ -43,6 +43,7 @@ suporte_thinking = [
 ]
 
 thinker = False
+# endregion
 
 # region: Prompt de sistema -
 # O prompt de sistema foi feito levando em conta os pontos fracos do BOT:
@@ -210,7 +211,76 @@ def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = Fals
         return
 
 # - Funções de conversa -
+def chat_rag(prompt: str):
+    """
+    Pega últimas mensagens do chat (desde de a última chamada da função)
+    Essa função é essencialmente um wrapper da função 'stream'
+    """
+    if not agente:
+        print_sys_msg("Agente não inicializado!", "Erro")
+        return "Agente não inicializado!"
+
+    stream = agente.stream(
+        {"messages": [{"role": "user", "content": prompt}]},
+        {
+            "configurable": {
+                "thread_id": "1"
+            },
+            "recursion_limit": 25
+        },
+        stream_mode=["updates", "messages"]
+    )
+
+    printed_msg_ids = set()
+    em_reasoning = False
+
+    for mode, chunk in stream:
+        gerado = ""
+        # TODO: Deixar esse if mais limpo
+        if mode == "messages" and (not modo_processamento or modo_db):
+            token, metadata = chunk
+            additional_kwargs = getattr(token, "additional_kwargs", "")
+            # Imprime apenas o stream do RAG, ignorando ToolMessages para não duplicar
+            if getattr(token, "type", "") == "AIMessageChunk" and token.content:
+                gerado += token.content
+                if em_reasoning:
+                    em_reasoning = False
+            elif "reasoning_content" in additional_kwargs:
+                # Se o modelo não suportar thiking isso vai ser redundante
+                if modo_db:
+                    gerado += additional_kwargs["reasoning_content"]
+                elif not em_reasoning:
+                    em_reasoning = True
+                    gerado += "Pensando..."
+
+        elif mode == "updates":  # Tools e relacionados
+
+            for node, data in chunk.items():
+                # Mostra apenas mensagens
+                if (not data) or ("messages" not in data):
+                    continue
+
+                for msg in data.get("messages", []):
+                    # Pula a mensagem se ela já foi processada antes
+                    if getattr(msg, "id", None) in printed_msg_ids:
+                        continue
+                    # Adiciona mensagem para não ser printada de novo
+                    if hasattr(msg, "id") and msg.id:
+                        printed_msg_ids.add(msg.id)
+                    
+                    if hasattr(msg, "tool_calls") and msg.tool_calls:
+
+                        for call in msg.tool_calls:
+                            if modo_db:
+                                gerado += f"\n[Chamada da Tool] {call['name']}({call['args']})\n"
+                            else:
+                                gerado += f"\nChamada da Tool: {call['name']}({call['args']})\n"
+                    if msg.__class__.__name__ == "ToolMessage" and modo_db:
+                        gerado += f"\n[Resultado da Tool] {msg.content}\n"
+        yield gerado
+
 def chat_rag_cli():
+    """Função para conversa em modo CLI. Utilizada para testes."""
     os.system('cls' if os.name == 'nt' else 'clear')
 
     if not agente:
@@ -219,8 +289,7 @@ def chat_rag_cli():
     
     print(f"Chat iniciado. Digite 'sair' para sair.\nModo: {modo_chat}", end="\n\n")
 
-    # NOTE: Não precisa passar pelo trimming, já que cada um único
-    # TODO: Passar pelo trimming ao invés de deixar aqui?
+    # NOTE: Não precisa passar pelo trimming, já que cada um é único
     printed_msg_ids = set()
     em_reasoning = False
 
