@@ -3,9 +3,8 @@
 # Necessário ollama, mas sobre no README.md
 # ---- Funções e ferramentas utilizadas ----
 
+# TODO: Timeout tempo de respsota do bot
 # NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
-# TODO: O RAG acha que diretório podem ser indexdos?
-# TODO: Consertar o trimming matar o bot
 
 # region: Setup ---
 from langchain.agents import AgentState

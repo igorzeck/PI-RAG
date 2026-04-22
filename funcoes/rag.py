@@ -1,10 +1,7 @@
-# TODO: Dar ao agente vista do diretório raiz nãoé má ideia!
-# TODO: Função que quando chamada retorna texto grado até então!
-# TODO: (Modelo qwen3.5:2b?) Consertar fato que ele para no meio dos prompts depois de tools calls
 # --- RAG ---
 # Aparenta utilizar o tools com muita frequência, ou o último
 # tool call fica na stream!
-# NOTE: Possível parar um modeo específico com: ollama.stop('llama3') 
+# NOTE: Possível parar um modelo específico com: ollama.stop('llama3') 
 
 # region: Setup --
 import os
