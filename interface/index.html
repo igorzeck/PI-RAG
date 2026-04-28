@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Churn Agent</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #17171a;
+    --surface2: #1e1e22;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0eee8;
+    --muted: rgba(240,238,232,0.45);
+    --accent: #5DCAA5;
+    --accent2: #1D9E75;
+    --accent-dim: rgba(93,202,165,0.12);
+    --user-bubble: #1e2d28;
+    --user-border: rgba(93,202,165,0.25);
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 24px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .logo-mark {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-mark svg { width: 18px; height: 18px; }
+
+  .header-text h1 { font-size: 15px; font-weight: 500; }
+  .header-text p  { font-size: 12px; color: var(--muted); font-weight: 300; }
+
+  .status-pill {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--accent); font-weight: 500;
+    font-family: var(--mono);
+    background: var(--accent-dim);
+    border: 0.5px solid rgba(93,202,165,0.3);
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.5; transform:scale(.85); }
+  }
+
+  .tools-strip {
+    display: flex; gap: 6px;
+    padding: 10px 24px;
+    border-bottom: 0.5px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tool-chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 6px;
+    font-size: 11px; font-family: var(--mono);
+    border: 0.5px solid var(--border2);
+    color: var(--muted); white-space: nowrap;
+    transition: all .3s;
+  }
+  /* Todas as ferramentas sempre ativas (sem modo) */
+  .tool-chip.ativa {
+    background: var(--accent-dim);
+    border-color: rgba(93,202,165,0.25);
+    color: var(--accent);
+  }
+  /* Flash laranja quando a ferramenta é chamada */
+  .tool-chip.chamada {
+    background: rgba(239,159,39,0.15);
+    border-color: rgba(239,159,39,0.4);
+    color: #EF9F27;
+  }
+  .tool-chip svg { width: 11px; height: 11px; }
+
+  .chat-wrap {
+    flex: 1; overflow-y: auto; padding: 24px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border2) transparent;
+  }
+  .chat-inner {
+    max-width: 720px; margin: 0 auto;
+    padding: 0 24px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  .welcome { text-align: center; padding: 40px 20px 20px; }
+  .welcome-icon {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 18px;
+  }
+  .welcome-icon svg { width: 28px; height: 28px; }
+  .welcome h2 { font-size: 22px; font-weight: 500; letter-spacing: -.02em; margin-bottom: 8px; }
+  .welcome p  { font-size: 14px; color: var(--muted); font-weight: 300; line-height: 1.6; max-width: 380px; margin: 0 auto 28px; }
+
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-width: 500px; margin: 0 auto; }
+  .qa-btn {
+    background: var(--surface2);
+    border: 0.5px solid var(--border2);
+    border-radius: 10px; padding: 12px 14px;
+    color: var(--text); font-family: var(--font);
+    font-size: 12.5px; font-weight: 400;
+    text-align: left; cursor: pointer; line-height: 1.4;
+    transition: border-color .15s, background .15s;
+  }
+  .qa-btn:hover { border-color: rgba(93,202,165,.35); background: var(--accent-dim); color: var(--accent); }
+  .qa-label {
+    font-size: 10px; font-family: var(--mono);
+    color: var(--muted); margin-bottom: 4px; display: block;
+  }
+  /* Botões de preset preenchem o input mas não enviam */
+  .qa-btn.preset .qa-label { color: #EF9F27; opacity: .7; }
+  .qa-btn.preset:hover { border-color: rgba(239,159,39,.35); background: rgba(239,159,39,.08); color: #EF9F27; }
+
+  .msg { display: flex; flex-direction: column; gap: 6px; animation: fadein .2s ease-out; }
+  @keyframes fadein { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+
+  .msg-meta {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--muted); font-family: var(--mono);
+  }
+  .msg-avatar {
+    width: 22px; height: 22px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 500; flex-shrink: 0;
+  }
+  .msg.user  .msg-avatar { background: var(--accent-dim); color: var(--accent); border: 0.5px solid var(--user-border); }
+  .msg.agent .msg-avatar { background: linear-gradient(135deg, var(--accent2), var(--accent)); color: #0f1f1a; }
+
+  .msg-body {
+    font-size: 14px; line-height: 1.7; font-weight: 300;
+    border-radius: 12px; padding: 12px 16px;
+  }
+  .msg.user  .msg-body { background: var(--user-bubble); border: 0.5px solid var(--user-border); border-radius: 12px 12px 4px 12px; }
+  .msg.agent .msg-body { background: var(--surface2); border: 0.5px solid var(--border); border-radius: 4px 12px 12px 12px; }
+
+  .tool-call {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px;
+    background: rgba(239,159,39,.1); border: 0.5px solid rgba(239,159,39,.3);
+    color: #EF9F27; font-size: 11.5px; font-family: var(--mono); margin-bottom: 8px;
+  }
+  .tool-call svg { width: 11px; height: 11px; }
+
+  .typing {
+    display: flex; align-items: center; gap: 5px;
+    padding: 14px 16px;
+    background: var(--surface2); border: 0.5px solid var(--border);
+    border-radius: 4px 12px 12px 12px;
+  }
+  .typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .2s; }
+  .typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes bounce {
+    0%,60%,100% { transform:translateY(0); opacity:.4; }
+    30%          { transform:translateY(-5px); opacity:1; }
+  }
+
+  .input-area {
+    padding: 16px 24px 20px;
+    border-top: 0.5px solid var(--border);
+    background: var(--surface); flex-shrink: 0;
+  }
+  .input-inner { max-width: 720px; margin: 0 auto; }
+
+  /* Badge do arquivo enviado */
+  .upload-badge {
+    display: none; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px; margin-bottom: 8px;
+    background: rgba(93,202,165,.1); border: 0.5px solid rgba(93,202,165,.3);
+    color: var(--accent); font-size: 11.5px; font-family: var(--mono);
+    width: fit-content;
+  }
+  .upload-badge.visivel { display: flex; }
+  .upload-badge-x {
+    cursor: pointer; opacity: .6; margin-left: 4px;
+    background: none; border: none; color: inherit;
+    font-size: 13px; line-height: 1; padding: 0;
+  }
+  .upload-badge-x:hover { opacity: 1; }
+
+  .input-box {
+    display: flex; align-items: flex-end; gap: 10px;
+    background: var(--surface2); border: 0.5px solid var(--border2);
+    border-radius: 14px; padding: 10px 10px 10px 16px;
+    transition: border-color .15s;
+  }
+  .input-box:focus-within { border-color: rgba(93,202,165,.4); }
+
+  textarea {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font);
+    font-size: 14px; font-weight: 300;
+    resize: none; min-height: 22px; max-height: 160px; line-height: 1.6;
+  }
+  textarea::placeholder { color: var(--muted); }
+
+  .upload-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--surface); border: 0.5px solid var(--border2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .15s, border-color .15s;
+    color: var(--muted);
+  }
+  .upload-btn:hover { background: var(--accent-dim); border-color: rgba(93,202,165,.3); color: var(--accent); }
+  .upload-btn svg { width: 15px; height: 15px; }
+
+  .send-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .15s, transform .1s;
+  }
+  .send-btn:hover   { background: var(--accent2); }
+  .send-btn:active  { transform: scale(.95); }
+  .send-btn:disabled { background: var(--border2); cursor: not-allowed; }
+  .send-btn svg { width: 16px; height: 16px; }
+
+  .hint { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: center; font-weight: 300; }
+
+  .msg-body strong { font-weight: 500; }
+  .msg-body code { font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,.07); padding: 1px 5px; border-radius: 4px; }
+  .msg-body ul, .msg-body ol { padding-left: 18px; margin-top: 6px; }
+  .msg-body li { margin-bottom: 3px; }
+  .error-msg { color: #E24B4A; }
+
+  .chat-wrap::-webkit-scrollbar { width: 4px; }
+  .chat-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Agente RAG</h1>
+    <p>PI Fatec Rubens Lara · Análise de retenção de clientes</p>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot"></div>
+    online
+  </div>
+</header>
+
+<!-- Todas as ferramentas sempre ativas — acendem em laranja ao serem chamadas -->
+<div class="tools-strip" id="toolsStrip">
+  <div class="tool-chip ativa" id="chip-calcular_churn_rate">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    calcular_churn_rate
+  </div>
+  <div class="tool-chip ativa" id="chip-dataset_query">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+    dataset_query
+  </div>
+  <div class="tool-chip ativa" id="chip-buscar_docs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    buscar_docs
+  </div>
+  <div class="tool-chip ativa" id="chip-indexar_documento">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    indexar_documento
+  </div>
+  <div class="tool-chip ativa" id="chip-listar_diretorio">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    listar_diretorio
+  </div>
+  <div class="tool-chip ativa" id="chip-dataset_info">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    dataset_info
+  </div>
+  <div class="tool-chip ativa" id="chip-abrir_doc">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    abrir_doc
+  </div>
+</div>
+
+<div class="chat-wrap" id="chatWrap">
+  <div class="chat-inner" id="chatInner">
+    <div class="welcome" id="welcome">
+      <div class="welcome-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <h2>Olá! Sou o Agente de Churn</h2>
+      <p>Analiso dados de clientes, calculo taxas de cancelamento e acesso documentos no diretório de trabalho. Como posso ajudar?</p>
+      <div class="quick-actions">
+        <!-- Enviam direto (perguntas simples) -->
+        <button class="qa-btn" onclick="sendQuick('Qual é a taxa de churn atual por trimestre?')">
+          <span class="qa-label">calcular_churn_rate()</span>
+          Qual a taxa de churn por trimestre?
+        </button>
+        <button class="qa-btn" onclick="sendQuick('Liste os arquivos disponíveis no diretório atual.')">
+          <span class="qa-label">listar_diretorio('.')</span>
+          Liste os arquivos disponíveis
+        </button>
+        <!-- Presets — preenchem o input para o usuário editar antes de enviar -->
+        <button class="qa-btn preset" onclick="presetInput('Indexe o arquivo dados.csv para análise.')">
+          <span class="qa-label">↵ indexar_documento('dados.csv')</span>
+          Indexar um arquivo do diretório…
+        </button>
+        <button class="qa-btn preset" onclick="presetInput('Busque informações sobre churn rate nos documentos.')">
+          <span class="qa-label">↵ buscar_docs('churn rate', k=5)</span>
+          Buscar nos documentos indexados…
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="input-area">
+  <div class="input-inner">
+
+    <!-- Badge do arquivo enviado -->
+    <div class="upload-badge" id="uploadBadge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="uploadBadgeNome"></span>
+      <button class="upload-badge-x" onclick="limparUploadBadge()" title="Remover">✕</button>
+    </div>
+
+    <div class="input-box">
+      <!-- Input oculto de arquivo -->
+      <input type="file" id="fileInput" style="display:none" onchange="uploadArquivo(this)">
+
+      <!-- Botão de anexar arquivo -->
+      <button class="upload-btn" title="Enviar arquivo para o playground" onclick="document.getElementById('fileInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.71a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+
+      <textarea
+        id="input"
+        placeholder="Pergunte sobre churn, clientes, documentos..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <p class="hint">Enter para enviar · Shift+Enter para nova linha · 📎 para enviar arquivos ao agente</p>
+  </div>
+</div>
+
+<script>
+let aguardando = false;
+let msgSeq = 0; // contador único para cada bolha — corrige bug dos balões vazios
+
+// Helpers DOM
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+}
+
+// Envia direto (quick actions simples)
+function sendQuick(text) {
+  document.getElementById('input').value = text;
+  sendMsg();
+}
+
+// Preenche o input sem enviar (presets de função para o usuário editar)
+function presetInput(text) {
+  const el = document.getElementById('input');
+  el.value = text;
+  el.focus();
+  // Coloca o cursor no final
+  el.selectionStart = el.selectionEnd = el.value.length;
+  autoResize(el);
+}
+
+function scrollBot() {
+  const w = document.getElementById('chatWrap');
+  w.scrollTo({ top: w.scrollHeight, behavior: 'smooth' });
+}
+
+function getTime() {
+  return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function removerWelcome() {
+  const w = document.getElementById('welcome');
+  if (w) w.remove();
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatarTexto(text) {
+  return escHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+// Upload de arquivo para o playground
+async function uploadArquivo(input) {
+  if (!input.files || !input.files[0]) return;
+  const arquivo = input.files[0];
+
+  const badge = document.getElementById('uploadBadge');
+  const badgeNome = document.getElementById('uploadBadgeNome');
+  badgeNome.textContent = `Enviando ${arquivo.name}…`;
+  badge.classList.add('visivel');
+
+  try {
+    const form = new FormData();
+    form.append('arquivo', arquivo);
+    const resp = await fetch('/upload', { method: 'POST', body: form });
+    const data = await resp.json();
+
+    if (data.ok) {
+      badgeNome.textContent = `${data.arquivo} enviado ✓`;
+    } else {
+      badgeNome.textContent = `Erro: ${data.erro}`;
+    }
+  } catch (e) {
+    badgeNome.textContent = `Falha no envio: ${e.message}`;
+  }
+
+  // Reseta o input para permitir enviar o mesmo arquivo novamente
+  input.value = '';
+}
+
+function limparUploadBadge() {
+  document.getElementById('uploadBadge').classList.remove('visivel');
+  document.getElementById('uploadBadgeNome').textContent = '';
+}
+
+// Mensagens
+function addMsgUsuario(text) {
+  removerWelcome();
+  const ci = document.getElementById('chatInner');
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `
+    <div class="msg-meta">
+      <div class="msg-avatar">EU</div>
+      <span>Você</span>
+      <span style="margin-left:auto">${getTime()}</span>
+    </div>
+    <div class="msg-body">${escHtml(text)}</div>`;
+  ci.appendChild(el);
+  scrollBot();
+}
+
+function addTyping() {
+  removerWelcome();
+  const ci = document.getElementById('chatInner');
+  // Remove indicador anterior se ainda existir
+  const anterior = document.getElementById('typing-indicator');
+  if (anterior) anterior.remove();
+
+  const el = document.createElement('div');
+  el.id = 'typing-indicator';
+  el.className = 'msg agent';
+  el.innerHTML = `
+    <div class="msg-meta">
+      <div class="msg-avatar">AG</div>
+      <span>Agente RAG</span>
+    </div>
+    <div class="typing"><span></span><span></span><span></span></div>`;
+  ci.appendChild(el);
+  scrollBot();
+}
+
+function removerTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+// Cria bolha de streaming com ID único — corrige bug dos balões vazios/duplicados
+function addStreamBolha() {
+  removerWelcome();
+  const seq = ++msgSeq;
+  const ci = document.getElementById('chatInner');
+  const el = document.createElement('div');
+  el.className = 'msg agent';
+  el.dataset.seq = seq;
+  el.innerHTML = `
+    <div class="msg-meta">
+      <div class="msg-avatar">AG</div>
+      <span>Agente RAG</span>
+      <span style="margin-left:auto">${getTime()}</span>
+    </div>
+    <div class="msg-body" id="stream-body-${seq}"></div>`;
+  ci.appendChild(el);
+  return {
+    bodyEl: document.getElementById(`stream-body-${seq}`),
+    msgEl: el
+  };
+}
+
+// Acende chip da ferramenta chamada em laranja e volta ao verde após 2s
+function inserirBadgeTool(bodyEl, nomeTool, args) {
+  const badge = document.createElement('div');
+  badge.className = 'tool-call';
+  badge.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+    </svg>
+    ${escHtml(nomeTool)}(${escHtml(args)})`;
+  bodyEl.prepend(badge);
+
+  const chip = document.getElementById('chip-' + nomeTool);
+  if (chip) {
+    chip.classList.remove('ativa');
+    chip.classList.add('chamada');
+    setTimeout(() => {
+      chip.classList.remove('chamada');
+      chip.classList.add('ativa');
+    }, 2000);
+  }
+}
+
+// Envio principal
+async function sendMsg() {
+  if (aguardando) return;
+  const inp = document.getElementById('input');
+  const text = inp.value.trim();
+  if (!text) return;
+
+  inp.value = '';
+  inp.style.height = 'auto';
+  document.getElementById('sendBtn').disabled = true;
+  aguardando = true;
+
+  addMsgUsuario(text);
+  addTyping();
+
+  // Referências controladas fora do try para o catch poder acessar
+  let bodyEl = null;
+  let msgEl  = null;
+
+  try {
+    const resp = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mensagem: text })
+    });
+
+    if (!resp.ok) throw new Error(`Servidor retornou ${resp.status}: ${resp.statusText}`);
+
+    removerTyping();
+    ({ bodyEl, msgEl } = addStreamBolha());
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let textoCompleto = '';
+    let toolsDetectadas = [];
+
+    const reTool = /Chamada da Tool:\s*(\w+)\((\{.*?\}|)\)/g;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      textoCompleto += chunk;
+
+      let m;
+      reTool.lastIndex = 0;
+      while ((m = reTool.exec(textoCompleto)) !== null) {
+        const nome = m[1], args = m[2] || '';
+        if (!toolsDetectadas.find(t => t.nome === nome && t.args === args)) {
+          toolsDetectadas.push({ nome, args });
+        }
+      }
+
+      const textoLimpo = textoCompleto
+        .replace(/\nChamada da Tool:.*\n?/g, '')
+        .trim();
+
+      bodyEl.innerHTML = formatarTexto(textoLimpo);
+      scrollBot();
+    }
+
+    // Remove bolha se ficou vazia (ex: resposta foi só chamada de tool sem texto)
+    const textoFinal = textoCompleto.replace(/\nChamada da Tool:.*\n?/g, '').trim();
+    if (!textoFinal && toolsDetectadas.length === 0 && msgEl) {
+      msgEl.remove();
+    } else {
+      toolsDetectadas.forEach(t => inserirBadgeTool(bodyEl, t.nome, t.args));
+    }
+
+  } catch (e) {
+    removerTyping();
+
+    // Se a bolha já foi criada, exibe o erro nela (sem criar uma nova) isso serve pra se n tiver ram suficiente tb
+    if (bodyEl) {
+      bodyEl.innerHTML = `<span class="error-msg">⚠ Erro durante a resposta.</span><br><br>Detalhe: <code>${escHtml(e.message)}</code>`;
+    } else {
+      // Erro antes de criar a bolha (ex: servidor fora do ar)
+      const ci = document.getElementById('chatInner');
+      const el = document.createElement('div');
+      el.className = 'msg agent';
+      el.innerHTML = `
+        <div class="msg-meta"><div class="msg-avatar">AG</div><span>Agente RAG</span></div>
+        <div class="msg-body">
+          <span class="error-msg">Erro ao conectar com o servidor.</span><br><br>
+          Verifique se o servidor está rodando:<br>
+          <code>python main.py</code><br><br>
+          Detalhe: <code>${escHtml(e.message)}</code>
+        </div>`;
+      ci.appendChild(el);
+      scrollBot();
+    }
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  aguardando = false;
+}
+</script>
+</body>
+</html>
