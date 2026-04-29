@@ -87,6 +87,7 @@ ferramentas_base = [finalizar_conversa]
 ferramentas_padrao = [calcular_churn_rate]
 # As experimentais olham os arquivos no diretório de trabalho
 ferramentas_experimentais = [listar_diretorio,
+               calcular_churn_rate,
                indexar_documento,
                buscar_docs,
                abrir_doc,
