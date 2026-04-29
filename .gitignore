@@ -2,3 +2,4 @@
 !.gitignore
 __pycache__
 funcoes/__pycache__
+test*

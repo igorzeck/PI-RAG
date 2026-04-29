@@ -36,6 +36,7 @@ suporte_thinking = [
     False,
     True,
     True,
+    True,
     False,
 ]
 
@@ -122,7 +123,8 @@ def conj_menu_cli(ops: list[str], escolha: int = -1, sair_como_ultima = False, c
     saidas = ["sair", "s", "quit", "q", "exit"]
 
     if sair_como_ultima:
-        saidas.append(len(ops))
+        saidas.append(str(len(ops)))
+        ops.append("Sair")
 
     while True:
         print("Escolha uma das opções. Ou escreva 's' para sair.")

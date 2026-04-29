@@ -1,11 +1,13 @@
 # TODO: Implementar histórico de conversas (arquivo)
 # TODO: Arquivo backlog com bot abertos (para fechar eles caso tenham sido abertos em outra sessão?)
+# TODO: Função para lidar com saídas inesperadas
 # Loop principal do projeto
 import subprocess
 import time
 import requests
 import sys
 import os
+import atexit
 
 # - Constantes -
 DB_MODE = True
@@ -46,9 +48,13 @@ def abrir_ollama():
 
 
 def fechar_ollama():
+    global ps
+
     if ps:
+        print_sys_msg("Fechando o Ollama...")
         ps.terminate()
         ps.wait()
+        ps = None
 
 
 # -- Interface visual (Flask) --
@@ -83,6 +89,11 @@ def chat():
 
     return Response(gerar(), mimetype='text/plain; charset=utf-8')
 
+def cleanup():
+    """Função executada nas saídas do código"""
+    fechar_ollama()
+
+atexit.register(cleanup)
 
 if __name__ == '__main__':
     abrir_ollama()
@@ -92,7 +103,7 @@ if __name__ == '__main__':
     modelo_op = rag.conj_menu_cli(
         ops=[f"Modelo {m}" for m in rag.modelos],
         escolha=-1,
-        clear_cli=False   # mantém mensagens de inicialização visíveis
+        clear_cli=False,   # mantém mensagens de inicialização visíveis
     )
 
     if modelo_op < 0:
