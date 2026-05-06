@@ -1,6 +1,8 @@
 # TODO: Implementar histórico de conversas (arquivo)
 # TODO: Arquivo backlog com bot abertos (para fechar eles caso tenham sido abertos em outra sessão?)
 # TODO: Função para lidar com saídas inesperadas
+# TODO: Consertar bug em que o bot para no meio do fluxo de geração de texto.
+
 # Loop principal do projeto
 import subprocess
 import time

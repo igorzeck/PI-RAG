@@ -40,7 +40,7 @@ suporte_thinking = [
     False,
 ]
 
-thinker = False
+pensante = False
 # endregion
 
 # region: Prompt de sistema -
@@ -160,7 +160,7 @@ def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = Fals
     global agente
     global modo_chat
     global modo_db
-    global thinker
+    global pensante
 
     modo_db = with_debug_output
 
@@ -173,11 +173,12 @@ def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = Fals
         exit(0)
     
     modelo = modelos[op_]
-    thinker = suporte_thinking[op_]
+    pensante = suporte_thinking[op_]
 
     llm = ChatOllama(model=modelo,
                      num_ctx=32768,
-                     reasoning=thinker)  # Nem todos modelos tem suporte!
+                     temperature=0.6,
+                     reasoning=pensante)  # Nem todos modelos tem suporte!
 
     # Menu 2 - Modo do Agente
     op_ = conj_menu_cli(ops=[

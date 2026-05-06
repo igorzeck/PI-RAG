@@ -35,7 +35,7 @@ from pathlib import Path
 from colorama import Fore
 
 # - Variáveis e Constantes -
-MAX_MESSAGES = 50  # O ideal seria manter as mensagens do usuário!
+MAX_MESSAGES = 100  # O ideal seria manter as mensagens do usuário!
 #__file__ é o caminho para esse arquivo,
 # o resolve pega o caminho absoluto e o parent, parent leva ao diretório base
 BASE_DIR = Path(__file__).resolve().parent.parent
