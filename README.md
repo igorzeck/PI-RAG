@@ -2,6 +2,9 @@
 
 Este arquivo apresenta informações básicas acerca do projeto ["PI-RAG"](https://github.com/igorzeck/PI-RAG/tree/main)
 
+<img width="645" height="499" alt="image" src="https://github.com/user-attachments/assets/dca8d9a6-6b8f-4e79-ba6e-a87cc22f9c84" />
+Imagem: Interface visual do *bot*.
+
 ## Organização do projeto
 
 O projeto é organizado da seguinte maneira:
