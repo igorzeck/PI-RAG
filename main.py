@@ -1,19 +1,27 @@
-# TODO: Implementar histórico de conversas (arquivo)
 # TODO: Arquivo backlog com bot abertos (para fechar eles caso tenham sido abertos em outra sessão?)
 # TODO: Função para lidar com saídas inesperadas
 # TODO: Consertar bug em que o bot para no meio do fluxo de geração de texto.
 
 # Loop principal do projeto
+# Para abrir o navegador na interface visual
+import webbrowser
+
+import pathlib
 import subprocess
 import time
 import requests
 import sys
 import os
 import atexit
+import signal
 
 # - Constantes -
 DB_MODE = True
-
+TMP_PREF = 'recursos/'
+TMP_SUFF = '.tmp'
+# File containing current session info
+OLLAMA_PS_PATH = pathlib.Path(TMP_PREF + '.ollama_ps' + TMP_SUFF)
+LINK_INTERFACE = 'http://localhost:8000'
 # -- Main --
 import funcoes.rag as rag
 from funcoes.ferramentas import print_sys_msg
@@ -36,17 +44,36 @@ def ollama_rodando():
 
 
 def abrir_ollama():
+    """Abre ollama caso já não tenha sido aberto pelo programa em outra sessão."""
     global ps
+
+    # Primeiro checa se o Ollama foi aberto em alguma sessão anterior
+    if OLLAMA_PS_PATH.is_file():
+        # Se foi aberto manda sinal para "matar" o processo e recria ele
+       print_sys_msg("Arquivo de sessão anterior achado!")
+       with open(OLLAMA_PS_PATH, 'r') as arq:
+            _pid_raw = arq.readline()
+            if _pid_raw.isnumeric():
+                _pid = int(_pid_raw)
+                try:
+                    os.kill(_pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    print_sys_msg("Processo Ollama anterior não achado. Assume-se fechado!", type="Aviso")
+                    # Deleta arquivo temporário
 
     if not ollama_rodando():
         try:
             ps = subprocess.Popen(['ollama', 'serve'],
                                     stdout=subprocess.DEVNULL,
                                     stderr=subprocess.DEVNULL)
-            print("Inicializando o Ollama...")
+            print_sys_msg("Inicializando o Ollama...")
             time.sleep(5)
+
+            # Cria arquivo temporário com o processo aberto
+            with open(OLLAMA_PS_PATH, "w") as arq:
+                arq.write(str(ps.pid))
         except Exception as e:
-            print(f"Ollama não incializou: {e}")
+            print_sys_msg(f"Ollama não incializou: {e}", type="Erro")
 
 
 def fechar_ollama():
@@ -57,6 +84,10 @@ def fechar_ollama():
         ps.terminate()
         ps.wait()
         ps = None
+        
+        # Deleta arquivo contendo PID do processo (caso exista)
+        if OLLAMA_PS_PATH.is_file():
+            os.remove(OLLAMA_PS_PATH)
 
 
 # -- Interface visual (Flask) --
@@ -122,5 +153,10 @@ if __name__ == '__main__':
         fechar_ollama()
     else:
         # Modo interface web
-        print(f"\nAcesse em: http://localhost:8000\n")
+        print(f"\nAcesse em: {LINK_INTERFACE}\n")
+
+        # Abre o navegador padrão
+        webbrowser.open_new(LINK_INTERFACE)
+        # Talvez necessite dar um refresh ná página se aberto assim...
+
         app.run(host='0.0.0.0', port=8000, debug=False)

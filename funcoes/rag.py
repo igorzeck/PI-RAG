@@ -148,7 +148,6 @@ def conj_menu_cli(ops: list[str], escolha: int = -1, sair_como_ultima = False, c
         
         return int(input_usuario)
 
-
 # - Configurações -
 def configurar_rag(modelo_op: int = -1, modo: int = -1, with_debug_output = False):
     """

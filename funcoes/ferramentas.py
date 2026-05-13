@@ -33,7 +33,8 @@ from langgraph.runtime import Runtime
 # Outros
 from pathlib import Path
 from colorama import Fore
-
+import pickle as pkl
+import funcoes.churn_rate as churn_rate
 # - Variáveis e Constantes -
 MAX_MESSAGES = 100  # O ideal seria manter as mensagens do usuário!
 #__file__ é o caminho para esse arquivo,
@@ -42,6 +43,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 HOMEDIR = BASE_DIR / 'playground'
 INDEXADOS = set()
 DATASETS = {}  # Dict
+
+# PATH para salvar/carreagr o modelo de Churn Rate
+PATH_MODELO = Path("recursos/modelo_churn_rate.pkl")
+PATH_DATASETS_CHRUN = Path("playground/datasets/Telco-Customer-Churn.csv")
 
 # Necessário dar um pull nesse modelo de embedding!
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
@@ -68,6 +73,7 @@ def print_sys_msg(msg: str, type: str = "Info", end="\n", flush = False):
     elif type == "OK":
         cor = Fore.LIGHTGREEN_EX
     elif type == "Info":
+        # Padrão
         cor = Fore.LIGHTBLACK_EX
 
     if cor:
@@ -131,7 +137,7 @@ def finalizar_conversa() -> str:
     """
     print("O RAG finalizou este chat.")
     exit(0)
-# - Churn rate (TESTE) -
+# - Churn rate -
 @tool
 def calcular_churn_rate() -> str:
     """
@@ -141,8 +147,45 @@ def calcular_churn_rate() -> str:
 
     Os valores são coletados pela própria função.
     """
-    mudar_modo(pensando=False)
-    return "0.12 - Q1; 0.02 - Q2; 0.05 - Q3; 0.08 Q4"
+    modelo = None
+    # 1. Checa se já há algum modelo de Churn Rate treinado
+    if not PATH_MODELO.is_file():
+        modelo = churn_rate.treinar_modelo()
+
+        # Salva o modelo
+        with open(PATH_MODELO, 'wb') as arq:
+            pkl.dump(modelo, arq)
+    
+    # 2. Coleta esse modelo
+    if not modelo:
+        with open(PATH_MODELO, 'rb') as arq:
+            modelo = pkl.load(arq)
+    
+    # 3. Executa modelo para os dados disponíveis
+    print_sys_msg(f"Modelo de Churn Rate encontrado com sucesso. Acurácia de teste: {modelo.melhor_acc * 100:.2f}%", type="OK")
+    
+    df_proc = pd.read_csv(PATH_DATASETS_CHRUN).drop(columns=churn_rate.TARGET_COLUMN)
+
+    # Pré-processamento do dataset
+    # TODO: Função a parte
+    df_proc['TotalCharges'] = pd.to_numeric(df_proc['TotalCharges'], errors='coerce')
+    df_proc['TotalCharges'].fillna(df_proc['TotalCharges'].median(), inplace=True)
+
+    df_proc.drop(columns=['customerID'], inplace=True, errors='ignore')
+
+    le = churn_rate.LabelEncoder()
+    for col in df_proc.columns:
+        if df_proc[col].dtype == 'object' or str(df_proc[col].dtype) == 'bool':
+            df_proc[col] = le.fit_transform(df_proc[col].astype(str))
+
+    X = df_proc.values.astype(float)
+
+    resultado = modelo.predict(X_new=X)
+    prop_s = sum(resultado) / len(resultado)
+    prop_n = 1 - prop_s
+    # Previsão dos dados
+    return f"Previsão de Chrun (dados: '{PATH_DATASETS_CHRUN.name}'):\nNão: {prop_n*100:.2f} ({len(resultado) - sum(resultado)})\nSim: {prop_s*100:.2f} ({sum(resultado)})\n"
+
 
 # - Com busca navegável (MODO EXPERIMENTAL) -
 # As funções abaixo utilizam busca navegável
@@ -379,4 +422,4 @@ def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
     except Exception as e:
         return f"Erro ao executar operação: {e}"
 # endregion: Ferramentas --
-# endregion: Funcções ---
+# endregion: Funcções ---=
