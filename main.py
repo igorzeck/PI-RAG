@@ -1,10 +1,11 @@
-# TODO: Arquivo backlog com bot abertos (para fechar eles caso tenham sido abertos em outra sessão?)
 # TODO: Função para lidar com saídas inesperadas
 # TODO: Consertar bug em que o bot para no meio do fluxo de geração de texto.
-
+# TODO: Churn rate retorna clientes como 1 para chance de Churn!
+# TODO: Pro Churn não só retornar 1 e 0, retornar também probabilidade
 # Loop principal do projeto
 # Para abrir o navegador na interface visual
 import webbrowser
+from threading import Timer
 
 import pathlib
 import subprocess
@@ -34,6 +35,9 @@ ps = None
 
 # Diretório playground onde os arquivos enviados pela interface são salvos
 PLAYGROUND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'playground')
+
+def abrir_navegador():
+    webbrowser.open_new(LINK_INTERFACE)
 
 def ollama_rodando():
     try:
@@ -156,7 +160,7 @@ if __name__ == '__main__':
         print(f"\nAcesse em: {LINK_INTERFACE}\n")
 
         # Abre o navegador padrão
-        webbrowser.open_new(LINK_INTERFACE)
+        if not os.environ.get("WERKZEUG_RUN_MAIN"):
+            Timer(1, abrir_navegador).start()
         # Talvez necessite dar um refresh ná página se aberto assim...
-
         app.run(host='0.0.0.0', port=8000, debug=False)

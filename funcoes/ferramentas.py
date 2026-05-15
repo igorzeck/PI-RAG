@@ -1,11 +1,9 @@
 # ---- Funções e ferramentas utilizadas ----
 # Aqui também são definida as bibliotecas utilizadas
-# Necessário ollama, mas sobre no README.md
+# Necessário ollama, mais sobre no README.md
 # ---- Funções e ferramentas utilizadas ----
 
-# TODO: Timeout tempo de respsota do bot
-# NOTE: Talvez todos os arquivos estariam indexados ANTES do bot?
-
+# TODO: Timeout tempo de resposta do bot
 # region: Setup ---
 from langchain.agents import AgentState
 from langchain_ollama import OllamaEmbeddings
@@ -37,10 +35,12 @@ import pickle as pkl
 import funcoes.churn_rate as churn_rate
 # - Variáveis e Constantes -
 MAX_MESSAGES = 100  # O ideal seria manter as mensagens do usuário!
-#__file__ é o caminho para esse arquivo,
+
+#__file__ é o caminho para desse arquivo ("ferramentas.py"),
 # o resolve pega o caminho absoluto e o parent, parent leva ao diretório base
 BASE_DIR = Path(__file__).resolve().parent.parent
 HOMEDIR = BASE_DIR / 'playground'
+
 INDEXADOS = set()
 DATASETS = {}  # Dict
 
@@ -50,6 +50,12 @@ PATH_DATASETS_CHRUN = Path("playground/datasets/Telco-Customer-Churn.csv")
 
 # Necessário dar um pull nesse modelo de embedding!
 embeddings = OllamaEmbeddings(model="nomic-embed-text")
+
+# De acordo com o LangChain, as métricas de similaridade podem ser:
+# Cosine similarity
+# Euclidean distance
+# Dot product
+# https://docs.langchain.com/oss/python/integrations/vectorstores
 vector_store = InMemoryVectorStore(embeddings)
 
 # Idealmente no script RAG
@@ -136,6 +142,7 @@ def finalizar_conversa() -> str:
     O usuário começar a falar de coisas não relacionadas aos arquivos.
     """
     print("O RAG finalizou este chat.")
+    # Esdd
     exit(0)
 # - Churn rate -
 @tool
