@@ -24,6 +24,7 @@ from langgraph.checkpoint.memory import MemorySaver
 modelos = [
         "qwen2.5:3b",
         "qwen2.5:7b",
+        "qwen3:0.6b",
         "qwen3:4b",
         "qwen3.5:2b",
         "qwen3.5:4b",
@@ -34,6 +35,7 @@ modelos = [
 suporte_thinking = [
     False,
     False,
+    True,
     True,
     True,
     True,
