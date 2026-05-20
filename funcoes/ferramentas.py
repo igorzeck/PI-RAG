@@ -59,7 +59,6 @@ embeddings = OllamaEmbeddings(model="nomic-embed-text")
 vector_store = InMemoryVectorStore(embeddings)
 
 # Idealmente no script RAG
-modo_processamento = False # Para indexção basicamente, TODO: renomear
 modo_db = False
 # endregion: Setup ---
 
@@ -88,28 +87,6 @@ def print_sys_msg(msg: str, type: str = "Info", end="\n", flush = False):
         print(msg,end="\n",flush=flush)
 
 
-def mudar_modo(pensando: bool):
-    """
-    Muda para o modo processamento.
-    Na prática só omite os resultados.
-    """
-    global modo_processamento
-    
-    if modo_db:
-        if pensando:
-            modo_processamento = True
-            print_etapa_msg("Modo processamento")
-        else:
-            modo_processamento = False
-            print_etapa_msg("Modo fala")
-    else:
-        if pensando:
-            modo_processamento = True
-            print_etapa_msg(msg="Processando...\n")
-        else:
-            modo_processamento = False
-    
-    modo_processamento = pensando
 # region: Middleware --
 @before_model
 def trimming(state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
@@ -206,7 +183,6 @@ def buscar_docs(query: str, k: int = 5) -> str:
     Utilize essa ferramenta para arquivos de texto JÁ INDEXADOS. Em caso de dataset
     utilize 'listar_diretorio' para encontrar o nome do dataset indexado e então utilize 'dataset_query' ou 'dataset_info'.
     """
-    mudar_modo(pensando=False)
     # TODO: Fazer retornar apenas se o vector_store tiver algo!
     docs = vector_store.similarity_search(query, k=k)
 
@@ -226,7 +202,6 @@ def abrir_doc(doc_pid: int) -> str:
     """
     Abre um documento retornado pela ferramenta buscar_docs.
     """
-    mudar_modo(pensando=False)
     docs = vector_store.similarity_search("", k=10)
 
     if doc_pid >= len(docs):
@@ -249,7 +224,6 @@ def listar_diretorio(subcaminho: str = ".") -> str:
     Use esta ferramenta antes de `indexar_documento` ou `indexar_dataset
     para descobrir quais arquivos e diretórios existem.
     """
-    mudar_modo(pensando=False)
 
     alvo = (HOMEDIR / subcaminho).resolve()
 
@@ -282,7 +256,6 @@ def indexar_documento(subcaminho: str) -> str:
     - subcaminho (str): O NOME exato do arquivo que você quer indexar (exemplo: 'p.txt', 'example.pdf').
     NUNCA use '.' ou chute nomes de arquivos aqui. Use nomes exatos descobertos com 'listar_diretorio'.
     """
-    mudar_modo(pensando=True)
 
     # TODO: Tirar RESOLVE do Paths
     alvo = (HOMEDIR / subcaminho).resolve()
@@ -362,7 +335,6 @@ def dataset_info(dataset: str) -> str:
     colunas, tipos e primeiras linhas.
     dataset: str - subcaminho do dataset indexado.
     """
-    mudar_modo(pensando=False)
 
     if dataset not in DATASETS:
         return "Dataset não indexado."
@@ -396,7 +368,6 @@ def dataset_query(dataset: str, operacao: str, coluna: str = "") -> str:
     - unique
     - describe
     """
-    mudar_modo(pensando=False)
 
     if dataset not in DATASETS:
         return "Dataset não indexado."

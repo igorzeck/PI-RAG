@@ -25,6 +25,7 @@ modelos = [
         "qwen2.5:3b",
         "qwen2.5:7b",
         "qwen3:0.6b",
+        "qwen3:1.7b",
         "qwen3:4b",
         "qwen3.5:2b",
         "qwen3.5:4b",
@@ -35,6 +36,7 @@ modelos = [
 suporte_thinking = [
     False,
     False,
+    True,
     True,
     True,
     True,
@@ -239,7 +241,7 @@ def chat_rag(prompt: str):
     for mode, chunk in stream:
         gerado = ""
         # TODO: Deixar esse if mais limpo
-        if mode == "messages" and (not modo_processamento or modo_db):
+        if mode == "messages":
             token, metadata = chunk
             additional_kwargs = getattr(token, "additional_kwargs", "")
             # Imprime apenas o stream do RAG, ignorando ToolMessages para não duplicar
@@ -248,12 +250,11 @@ def chat_rag(prompt: str):
                 if em_reasoning:
                     em_reasoning = False
             elif "reasoning_content" in additional_kwargs:
-                # Se o modelo não suportar thiking isso vai ser redundante
                 if modo_db:
                     gerado += additional_kwargs["reasoning_content"]
                 elif not em_reasoning:
                     em_reasoning = True
-                    gerado += "Pensando..."
+                    gerado += "Pensando... "
 
         elif mode == "updates":  # Tools e relacionados
 
@@ -318,7 +319,7 @@ def chat_rag_cli():
 
         for mode, chunk in stream:
             # TODO: Deixar esse if mais limpo
-            if mode == "messages" and (not modo_processamento or modo_db):
+            if mode == "messages":
                 token, metadata = chunk
                 additional_kwargs = getattr(token, "additional_kwargs", "")
                 # Imprime apenas o stream do RAG, ignorando ToolMessages para não duplicar
