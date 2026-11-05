@@ -21,9 +21,13 @@ Necssário utilizar as bibliotecas em requirements.txt:
 
 `pip install -r requirements.txt`
 
-Além disso, é necessário instalar o Ollama:
+Além disso, é necessário instalar o Ollama (se Linux):
 
 `curl -fsSL https://ollama.com/install.sh | sh`
+
+Em Windows (PowerShell):
+
+`irm https://ollama.com/install.ps1 | iex`
 
 E ativá-lo em segundo plano:
 
