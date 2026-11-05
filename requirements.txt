@@ -1,3 +1,4 @@
+en_core_web_sm==3.8.0
 aiofiles==25.1.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.13.3
@@ -23,7 +24,6 @@ cycler==0.12.1
 cymem==2.0.13
 dataclasses-json==0.6.7
 emoji==2.15.0
-en_core_web_sm==3.8.0
 filelock==3.25.2
 filetype==1.2.0
 Flask==3.1.0
