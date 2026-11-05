@@ -35,7 +35,7 @@ E ativá-lo em segundo plano:
 
 Após isso, é necessário (caso rodado localmente) realizar um *pull* no modelo de preferência. Por testes locais, foi utilizado o modelo qwen2.5 de 0.5 bilhões de parâmetros:
 
-`!ollama pull qwen2.5:0.5b`
+`ollama pull qwen2.5:0.5b`
 
 É fortemente recomendado a utilização de um modelo otimizado para uso de "tools", sendo estes encontrados [aqui](https://ollama.com/search?c=tools).
 
