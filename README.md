@@ -17,6 +17,25 @@ O projeto é organizado da seguinte maneira:
 **Observação**: Testes feitos em uma máquina Linux (Debian based).
 **Observação**: Ollama tem suporte limitado par modelos multimodais.
 
+Esse projeto utiliza o python 3.12 para rodar suas dependências:
+
+**Observação**: `py` ou `python` dependendo da sua máquina
+
+`py install 3.12`, ou `winget install Python.Python.3.12` ou direto do site do python
+
+Em seguida, instala utilizando essa versão do Python:
+
+```sh
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Antes, (possível instalar com `spacy` também), seja nescesssário installar o `en_core_web_sm`
+
+`pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl`
+
 Necssário utilizar as bibliotecas em requirements.txt:
 
 `pip install -r requirements.txt`
